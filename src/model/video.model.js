@@ -7,13 +7,17 @@ const videoSchema = new mongoose.Schema(
       required: [true, "Video title is required"],
       trim: true,
     },
-    link: {
+    videoUrl: {
       type: String,
-      required: [true, "Video link is required"],
+      required: [true, "Video URL is required"],
     },
     description: {
       type: String,
       required: [true, "Video description is required"],
+    },
+    isPublic: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }

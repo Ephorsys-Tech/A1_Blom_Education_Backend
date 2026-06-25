@@ -1,39 +1,20 @@
 import VideoModel from "../model/video.model.js";
-import { uploadVideoOnCloudinary, deleteVideoFromCloudinary } from "../utils/cloudinary.js";
 
 export const uploadVideo = async (req, res) => {
   try {
-    const { title } = req.body;
+    const { title, link, description } = req.body;
 
-    if (!title ) {
+    if (!title || !link || !description) {
       return res.status(400).json({
         success: false,
-        message: "Title are required",
-      });
-    }
-
-    const videoLocalPath = req.file?.path;
-
-    if (!videoLocalPath) {
-      return res.status(400).json({
-        success: false,
-        message: "Video file is required",
-      });
-    }
-
-    const cloudinaryResponse = await uploadVideoOnCloudinary(videoLocalPath);
-
-    if (!cloudinaryResponse) {
-      return res.status(500).json({
-        success: false,
-        message: "Error uploading video to Cloudinary",
+        message: "Title, link, and description are required",
       });
     }
 
     const video = await VideoModel.create({
       title,
-      videoUrl: cloudinaryResponse.secure_url,
-      public_id: cloudinaryResponse.public_id,
+      link,
+      description,
     });
 
     return res.status(201).json({
@@ -62,9 +43,6 @@ export const deleteVideo = async (req, res) => {
         message: "Video not found",
       });
     }
-
-    // Delete from Cloudinary
-    await deleteVideoFromCloudinary(video.public_id);
 
     // Delete from Database
     await VideoModel.findByIdAndDelete(id);

@@ -1,17 +1,32 @@
 import BlogModel from "../model/blog.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.config.js";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "../config/cloudinary.config.js";
+import { z } from "zod";
+
+const CreateBlogData = z.object({
+  title: z
+    .string()
+    .min(2, "Name is required")
+    .regex(/^[A-Za-z\s]+$/, "Name should contain only letters"),
+  description: z.string().min(10, "Name is required"),
+});
 
 // Create Blog
 export const createBlog = async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const result = CreateBlogData.safeParse(req.body);
 
-    if (!title || !description) {
+    if (!result.success) {
       return res.status(400).json({
         success: false,
-        message: "Title and description are required",
+        message: "Validation failed",
+        errors: result.error.format(),
       });
     }
+
+    const { title, description } = result.data;
 
     if (!req.file) {
       return res.status(400).json({
@@ -21,7 +36,11 @@ export const createBlog = async (req, res) => {
     }
 
     // Upload image to Cloudinary
-    const uploadResult = await uploadToCloudinary(req.file.buffer, "blogs", "image");
+    const uploadResult = await uploadToCloudinary(
+      req.file.buffer,
+      "blogs",
+      "image",
+    );
 
     const blog = await BlogModel.create({
       title,

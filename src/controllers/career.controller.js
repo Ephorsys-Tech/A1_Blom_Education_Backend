@@ -1,6 +1,22 @@
 import CareerModel from "../model/career.model.js";
 import ApplicationModel from "../model/application.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.config.js";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "../config/cloudinary.config.js";
+import { z } from "zod";
+
+const ApplyJobForm = z.object({
+  name: z
+    .string()
+    .min(2, "Name is required")
+    .regex(/^[A-Za-z\s]+$/, "Name should contain only letters"),
+  email: z.string().email({ message: "Enter a valid email" }),
+  phone: z
+    .string()
+    .regex(/^[0-9]{10}$/, "Phone must be 10 digits"),
+  jobId: z.string().min(1, "Job ID is required"),
+});
 
 // ==========================================
 // Job Opening Management (Admin & Public)
@@ -9,12 +25,22 @@ import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.c
 // Create Job Opening (Admin)
 export const createJob = async (req, res) => {
   try {
-    const { title, department, location, description, requirements, experience, salary, isActive } = req.body;
+    const {
+      title,
+      department,
+      location,
+      description,
+      requirements,
+      experience,
+      salary,
+      isActive,
+    } = req.body;
 
     if (!title || !department || !location || !description || !experience) {
       return res.status(400).json({
         success: false,
-        message: "Title, department, location, description, and experience are required",
+        message:
+          "Title, department, location, description, and experience are required",
       });
     }
 
@@ -23,7 +49,10 @@ export const createJob = async (req, res) => {
       if (Array.isArray(requirements)) {
         parsedRequirements = requirements;
       } else if (typeof requirements === "string") {
-        parsedRequirements = requirements.split(",").map((req) => req.trim()).filter(Boolean);
+        parsedRequirements = requirements
+          .split(",")
+          .map((req) => req.trim())
+          .filter(Boolean);
       }
     }
 
@@ -35,7 +64,10 @@ export const createJob = async (req, res) => {
       requirements: parsedRequirements,
       experience,
       salary: salary || "",
-      isActive: isActive !== undefined ? (isActive === "true" || isActive === true) : true,
+      isActive:
+        isActive !== undefined
+          ? isActive === "true" || isActive === true
+          : true,
     });
 
     return res.status(201).json({
@@ -56,7 +88,9 @@ export const createJob = async (req, res) => {
 // Get Active Jobs (Public)
 export const getJobs = async (req, res) => {
   try {
-    const jobs = await CareerModel.find({ isActive: true }).sort({ createdAt: -1 });
+    const jobs = await CareerModel.find({ isActive: true }).sort({
+      createdAt: -1,
+    });
     return res.status(200).json({
       success: true,
       data: jobs,
@@ -144,7 +178,10 @@ export const deleteJob = async (req, res) => {
         try {
           await deleteFromCloudinary(app.resumePublicId, "raw"); // PDF/Word docs are raw resources in cloudinary
         } catch (e) {
-          console.error(`Failed to delete resume ${app.resumePublicId} from Cloudinary:`, e);
+          console.error(
+            `Failed to delete resume ${app.resumePublicId} from Cloudinary:`,
+            e,
+          );
         }
       }
     }
@@ -152,7 +189,8 @@ export const deleteJob = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Job posting and all associated applications deleted successfully",
+      message:
+        "Job posting and all associated applications deleted successfully",
     });
   } catch (error) {
     console.error("Delete Job Error:", error);
@@ -171,15 +209,19 @@ export const deleteJob = async (req, res) => {
 // Apply for Job (Public)
 export const applyJob = async (req, res) => {
   try {
-    const { jobId, name, email, phone, coverLetter } = req.body;
+    const result = ApplyJobForm.safeParse(req.body);
 
-    if (!jobId || !name || !email || !phone) {
+    if (!result.success) {
       return res.status(400).json({
         success: false,
-        message: "Job ID, name, email, and phone number are required",
+        message: "Validation failed",
+        errors: result.error.format(),
       });
     }
 
+    const { name, email, phone, jobId } = result.data;
+
+    // File validation
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -197,7 +239,11 @@ export const applyJob = async (req, res) => {
     }
 
     // Upload resume to Cloudinary as raw resource type (PDFs and documents are uploaded as raw or auto)
-    const uploadResult = await uploadToCloudinary(req.file.buffer, "resumes", "raw");
+    const uploadResult = await uploadToCloudinary(
+      req.file.buffer,
+      "resumes",
+      "raw",
+    );
 
     const application = await ApplicationModel.create({
       jobId,
@@ -206,7 +252,6 @@ export const applyJob = async (req, res) => {
       phone,
       resumeUrl: uploadResult.url,
       resumePublicId: uploadResult.publicId,
-      coverLetter: coverLetter || "",
     });
 
     return res.status(201).json({

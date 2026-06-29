@@ -4,7 +4,7 @@ import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.c
 // Upload Reel
 export const uploadReel = async (req, res) => {
   try {
-    const { title } = req.body;
+    const { title, videoUrl } = req.body;
 
     if (!title) {
       return res.status(400).json({
@@ -13,40 +13,35 @@ export const uploadReel = async (req, res) => {
       });
     }
 
-    if (!req.file) {
+    if (!videoUrl) {
       return res.status(400).json({
         success: false,
-        message: "Video file is required",
+        message: "Instagram Reel Link is required",
       });
     }
 
-    // Upload video to Cloudinary
-    // We specify resourceType: "video" to ensure Cloudinary parses it as a video
-    const uploadResult = await uploadToCloudinary(req.file.buffer, "reels", "video");
+    let thumbnailUrl = "";
+    let thumbnailPublicId = "";
 
-    const duration = uploadResult.duration;
-
-    // Check duration. Allowing a tiny grace threshold (e.g. 30.5 seconds) or strictly 30.
-    if (duration && duration > 30.5) {
-      // Delete immediately from Cloudinary
-      await deleteFromCloudinary(uploadResult.publicId, "video");
-
-      return res.status(400).json({
-        success: false,
-        message: `Video duration is ${Math.round(duration)} seconds. Reels must be 30 seconds or less.`,
-      });
+    // Upload thumbnail cover image to Cloudinary if provided
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(req.file.buffer, "reels", "image");
+      thumbnailUrl = uploadResult.url;
+      thumbnailPublicId = uploadResult.publicId;
     }
 
     const reel = await ReelModel.create({
       title,
-      videoUrl: uploadResult.url,
-      videoPublicId: uploadResult.publicId,
-      duration: duration || 0,
+      videoUrl, // Storing Instagram Link
+      thumbnailUrl,
+      thumbnailPublicId,
+      videoPublicId: "",
+      duration: 0,
     });
 
     return res.status(201).json({
       success: true,
-      message: "Reel uploaded successfully",
+      message: "Reel added successfully",
       data: reel,
     });
   } catch (error) {
@@ -72,7 +67,12 @@ export const deleteReel = async (req, res) => {
       });
     }
 
-    // Delete from Cloudinary
+    // Delete thumbnail from Cloudinary
+    if (reel.thumbnailPublicId) {
+      await deleteFromCloudinary(reel.thumbnailPublicId, "image");
+    }
+
+    // Delete legacy video if any exists
     if (reel.videoPublicId) {
       await deleteFromCloudinary(reel.videoPublicId, "video");
     }
@@ -107,6 +107,53 @@ export const getReels = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error while fetching reels",
+      error: error.message,
+    });
+  }
+};
+
+// Update Reel
+export const updateReel = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, videoUrl } = req.body;
+
+    const reel = await ReelModel.findById(id);
+    if (!reel) {
+      return res.status(404).json({
+        success: false,
+        message: "Reel not found",
+      });
+    }
+
+    if (title) reel.title = title.trim();
+    if (videoUrl) reel.videoUrl = videoUrl.trim();
+
+    // If new thumbnail cover image is uploaded
+    if (req.file) {
+      // Delete old thumbnail from Cloudinary if it exists
+      if (reel.thumbnailPublicId) {
+        await deleteFromCloudinary(reel.thumbnailPublicId, "image");
+      }
+
+      // Upload new thumbnail
+      const uploadResult = await uploadToCloudinary(req.file.buffer, "reels", "image");
+      reel.thumbnailUrl = uploadResult.url;
+      reel.thumbnailPublicId = uploadResult.publicId;
+    }
+
+    await reel.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Reel updated successfully",
+      data: reel,
+    });
+  } catch (error) {
+    console.error("Update Reel Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while updating reel",
       error: error.message,
     });
   }

@@ -159,7 +159,7 @@ const leadSubmittedTemplate = ({
 
     <!-- COMPANY LOGO -->
     <img
-      src="https://a1blomeducation.com/logo.png"
+      src="https://a1blomeducation.com/Thelogo.png"
       alt="A1 Blom Education"
       width="120"
       style="display:block;margin:0 auto 20px;"

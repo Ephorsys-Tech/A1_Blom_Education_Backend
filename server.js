@@ -28,8 +28,8 @@ export const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:5173",
-      // "https://saverasurgicalgroup.com",
-      // "https://www.saverasurgicalgroup.com",
+      // "https://a1blomeducation.com",
+      // "https://www.a1blomeducation.com",
     ],
     credentials: true,
   },

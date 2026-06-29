@@ -8,9 +8,8 @@ import { z } from "zod";
 const CreateBlogData = z.object({
   title: z
     .string()
-    .min(2, "Name is required")
-    .regex(/^[A-Za-z\s]+$/, "Name should contain only letters"),
-  description: z.string().min(10, "Name is required"),
+    .min(2, "Title is required"),
+  description: z.string().min(10, "Description is required"),
 });
 
 // Create Blog

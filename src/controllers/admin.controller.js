@@ -1,4 +1,6 @@
 // import { sendMail } from "../config/sendMail.js";
+import { sendMail } from "../utils/sendMail.js";
+import { managerAccessTemplate } from "../utils/mailTemplates/managerAccessTemplate.js";
 import AdminModel from "../model/admin.model.js";
 import generateToken from "../utils/generateToken.js";
 // -----------------------------------------------------
@@ -86,13 +88,23 @@ export const loginAdmin = async (req, res) => {
     }
 
     // --------------------------------------------
-    // Find Admin already exist or Not
+    // Find Admin already exist or Not (by Email or UserId)
     // --------------------------------------------
-    const admin = await AdminModel.findOne({ email });
+    const admin = await AdminModel.findOne({ 
+      $or: [{ email: email }, { userId: email }] 
+    });
+    
     if (!admin) {
       return res.status(404).json({
         success: false,
-        message: "Admin Not Found",
+        message: "Admin or Manager Not Found",
+      });
+    }
+
+    if (admin.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Account is blocked. Please contact the main admin.",
       });
     }
 
@@ -400,5 +412,150 @@ export const resetPassword = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+// ======================================================
+// GIVE ACCESS (CREATE MANAGERS)
+// ======================================================
+
+export const giveAccess = async (req, res) => {
+  try {
+    // ------------------------------------------
+    // Check if requester is Admin
+    // ------------------------------------------
+    if (req.admin.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access Denied: Only Admin can perform this action",
+      });
+    }
+
+    const { name, email, password, role, userId } = req.body;
+
+    // ------------------------------------------
+    // Validation
+    // ------------------------------------------
+    if (!name || !email || !password || !role || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required (name, email, password, role, userId)",
+      });
+    }
+
+    const validRoles = ["web-manager", "app-manager"];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role. Must be 'web-manager' or 'app-manager'",
+      });
+    }
+
+    // ------------------------------------------
+    // Check Existing User
+    // ------------------------------------------
+    const existingUser = await AdminModel.findOne({ 
+      $or: [{ email: email }, { userId: userId }] 
+    });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email or User ID already exists",
+      });
+    }
+
+    // ------------------------------------------
+    // Create Manager
+    // ------------------------------------------
+    const manager = await AdminModel.create({
+      name,
+      email,
+      password,
+      role,
+      userId,
+    });
+
+    const managerData = await AdminModel.findById(manager._id).select("-password");
+
+    // ------------------------------------------
+    // Send Email to Manager
+    // ------------------------------------------
+    const { emailSubject, emailHtml } = managerAccessTemplate(role, name, userId, email, password);
+
+    // Attempt to send email, but don't fail the request if it fails
+    // Assuming sendMail is configured properly in .env
+    await sendMail(email, emailSubject, emailHtml);
+
+    // ------------------------------------------
+    // Success Response
+    // ------------------------------------------
+    return res.status(201).json({
+      success: true,
+      message: "Manager created successfully",
+      data: managerData,
+    });
+
+  } catch (error) {
+    console.error("Give Access Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// ======================================================
+// GET ALL MANAGERS
+// ======================================================
+export const getAllManagers = async (req, res) => {
+  try {
+    if (req.admin.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access Denied" });
+    }
+    const managers = await AdminModel.find({ role: { $in: ["web-manager", "app-manager"] } }).select("-password");
+    return res.status(200).json({ success: true, data: managers });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ======================================================
+// TOGGLE BLOCK MANAGER
+// ======================================================
+export const toggleBlockManager = async (req, res) => {
+  try {
+    if (req.admin.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access Denied" });
+    }
+    const { id } = req.params;
+    const manager = await AdminModel.findById(id);
+    if (!manager || manager.role === "admin") {
+      return res.status(404).json({ success: false, message: "Manager not found" });
+    }
+    manager.isBlocked = !manager.isBlocked;
+    await manager.save();
+    return res.status(200).json({ success: true, message: `Manager ${manager.isBlocked ? 'blocked' : 'unblocked'} successfully`, data: manager });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ======================================================
+// DELETE MANAGER
+// ======================================================
+export const deleteManager = async (req, res) => {
+  try {
+    if (req.admin.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access Denied" });
+    }
+    const { id } = req.params;
+    const manager = await AdminModel.findByIdAndDelete(id);
+    if (!manager) {
+      return res.status(404).json({ success: false, message: "Manager not found" });
+    }
+    return res.status(200).json({ success: true, message: "Manager deleted successfully" });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

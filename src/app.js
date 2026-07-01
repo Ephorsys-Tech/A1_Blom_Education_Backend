@@ -7,18 +7,12 @@ import cors from "cors";
 const app = express();
 
 // ---------------------------------------------
-// CORS Configuration
+// CORS (OPEN FOR ANY CLIENT: Web + App + Postman)
 // ---------------------------------------------
-const allowedOrigins = [
-  "http://localhost:5173",
-
-
-];
-
 app.use(
   cors({
-    origin: allowedOrigins,
-    credentials: true,
+    origin: true, // 🔥 allows all origins dynamically
+    credentials: true, // cookies + auth support
   }),
 );
 
@@ -32,19 +26,16 @@ app.use(
     limit: "20mb",
   }),
 );
-app.use(cookieParser());
 
-// ---------------------------------------------
-// Morgan Logger
-// ---------------------------------------------
+app.use(cookieParser());
 app.use(morgan("dev"));
 
 // ---------------------------------------------
-// API Prefix
+// Routes
 // ---------------------------------------------
-
 app.use("/api/v1", router);
 
+// ---------------------------------------------
+// Export app
+// ---------------------------------------------
 export default app;
-
-// app is export Here and Import in Server.js

@@ -7,12 +7,11 @@ import cors from "cors";
 const app = express();
 
 // ---------------------------------------------
-// CORS (OPEN FOR ANY CLIENT: Web + App + Postman)
+// CORS
 // ---------------------------------------------
 app.use(
   cors({
-    origin: true, // 🔥 allows all origins dynamically
-    credentials: true, // cookies + auth support
+    origin: "*",
   }),
 );
 
@@ -31,11 +30,19 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 
 // ---------------------------------------------
-// Routes
+// Test Route
+// ---------------------------------------------
+app.get("/test", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is working successfully 🚀",
+    timestamp: new Date(),
+  });
+});
+
+// ---------------------------------------------
+// API Routes
 // ---------------------------------------------
 app.use("/api/v1", router);
 
-// ---------------------------------------------
-// Export app
-// ---------------------------------------------
 export default app;

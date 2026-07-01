@@ -7,6 +7,7 @@ import contactRoutes from "../routes/contact.routes.js";
 import reelRoutes from "../routes/reel.routes.js";
 import announcementRoutes from "../routes/announcement.routes.js";
 import careerRoutes from "../routes/career.routes.js";
+import studentRoutes from "../routes/student.routes.js";
 
 const router = express.Router();
 
@@ -50,5 +51,9 @@ router.use("/announcements", announcementRoutes);
 // ========================================
 router.use("/careers", careerRoutes);
 
-export default router;
+// ========================================
+// Student Routes
+// ========================================
+router.use("/student", studentRoutes);
 
+export default router;

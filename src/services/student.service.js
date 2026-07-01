@@ -8,12 +8,10 @@ import { verifyOTP } from "../utils/verifyOTP.js";
 // ==========================================
 // Register Student Service
 // ==========================================
-
 export const registerStudentService = async (data) => {
   const { fullName, mobile, password, gender, selectedBatch, acceptedTerms } =
     data;
 
-  // Validation
   if (!fullName || !mobile || !password || !gender || !selectedBatch) {
     throw new Error("All fields are required.");
   }
@@ -22,14 +20,12 @@ export const registerStudentService = async (data) => {
     throw new Error("Please accept Terms & Conditions.");
   }
 
-  // Check Mobile
   const mobileExists = await Student.findOne({ mobile });
 
   if (mobileExists) {
     throw new Error("Mobile number already registered.");
   }
 
-  // Create Student
   const student = await Student.create({
     fullName,
     mobile,
@@ -40,7 +36,6 @@ export const registerStudentService = async (data) => {
     acceptedTermsAt: new Date(),
   });
 
-  // Send OTP using Twilio Verify
   await sendOTP(student.mobile);
 
   return {
@@ -53,27 +48,33 @@ export const registerStudentService = async (data) => {
 };
 
 // ==========================================
-// Verify Mobile OTP
+// Verify Mobile OTP Service
 // ==========================================
 
 export const verifyMobileOTPService = async (data) => {
   const { mobile, otp } = data;
 
   if (!mobile || !otp) {
-    throw new Error("Mobile and OTP are required.");
+    const error = new Error("Mobile and OTP are required.");
+    error.statusCode = 400;
+    throw error;
   }
 
   const student = await Student.findOne({ mobile });
 
   if (!student) {
-    throw new Error("Student not found.");
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
   }
 
   // Verify OTP using Twilio
   const verification = await verifyOTP(mobile, otp);
 
   if (verification.status !== "approved") {
-    throw new Error("Invalid OTP.");
+    const error = new Error("Invalid OTP.");
+    error.statusCode = 400;
+    throw error;
   }
 
   student.isMobileVerified = true;
@@ -89,35 +90,42 @@ export const verifyMobileOTPService = async (data) => {
 };
 
 // ==========================================
-// Resend OTP
+// Resend Mobile OTP Service
 // ==========================================
 
 export const resendMobileOTPService = async (data) => {
   const { mobile } = data;
 
   if (!mobile) {
-    throw new Error("Mobile number is required.");
+    const error = new Error("Mobile number is required.");
+    error.statusCode = 400;
+    throw error;
   }
 
   const student = await Student.findOne({ mobile });
 
   if (!student) {
-    throw new Error("Student not found.");
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
   }
 
   if (student.isMobileVerified) {
-    throw new Error("Mobile already verified.");
+    const error = new Error("Mobile already verified.");
+    error.statusCode = 400;
+    throw error;
   }
 
-  // Twilio will send a new OTP
+  // Send OTP using Twilio
   await sendOTP(student.mobile);
 
   return true;
 };
 
 // ==========================================
-// LOGIN Student
+// LOGIN Student Service
 // ==========================================
+
 export const loginStudentService = async (data) => {
   const { mobile, password } = data;
 
@@ -126,7 +134,9 @@ export const loginStudentService = async (data) => {
   // ==========================================
 
   if (!mobile || !password) {
-    throw new Error("Mobile and Password are required.");
+    const error = new Error("Mobile and Password are required.");
+    error.statusCode = 400;
+    throw error;
   }
 
   // ==========================================
@@ -138,7 +148,9 @@ export const loginStudentService = async (data) => {
   );
 
   if (!student) {
-    throw new Error("Invalid Mobile Number.");
+    const error = new Error("Invalid Mobile Number.");
+    error.statusCode = 404;
+    throw error;
   }
 
   // ==========================================
@@ -146,7 +158,9 @@ export const loginStudentService = async (data) => {
   // ==========================================
 
   if (!student.isMobileVerified) {
-    throw new Error("Please verify your mobile number first.");
+    const error = new Error("Please verify your mobile number first.");
+    error.statusCode = 403;
+    throw error;
   }
 
   // ==========================================
@@ -154,11 +168,15 @@ export const loginStudentService = async (data) => {
   // ==========================================
 
   if (!student.isActive) {
-    throw new Error("Your account is inactive.");
+    const error = new Error("Your account is inactive.");
+    error.statusCode = 403;
+    throw error;
   }
 
   if (student.isBlocked) {
-    throw new Error("Your account has been blocked.");
+    const error = new Error("Your account has been blocked.");
+    error.statusCode = 403;
+    throw error;
   }
 
   // ==========================================
@@ -168,7 +186,9 @@ export const loginStudentService = async (data) => {
   const isPasswordMatched = await student.comparePassword(password);
 
   if (!isPasswordMatched) {
-    throw new Error("Invalid Password.");
+    const error = new Error("Invalid Password.");
+    error.statusCode = 401;
+    throw error;
   }
 
   // ==========================================
@@ -176,7 +196,6 @@ export const loginStudentService = async (data) => {
   // ==========================================
 
   const accessToken = generateAccessToken(student._id);
-
   const refreshToken = generateRefreshToken(student._id);
 
   // ==========================================
@@ -188,8 +207,6 @@ export const loginStudentService = async (data) => {
   student.loginCount += 1;
 
   await student.save();
-
-  // Front-end can store the Token in  Secure Storag
 
   // ==========================================
   // Return Response
@@ -207,20 +224,23 @@ export const loginStudentService = async (data) => {
     },
   };
 };
-
 // ==========================================
 // GET MY PROFILE SERVICE
 // ==========================================
 
 export const getMyProfileService = async (studentId) => {
   if (!studentId) {
-    throw new Error("Student ID is required.");
+    const error = new Error("Student ID is required.");
+    error.statusCode = 400;
+    throw error;
   }
 
   const student = await Student.findById(studentId);
 
   if (!student) {
-    throw new Error("Student not found.");
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
   }
 
   return student;
@@ -231,10 +251,18 @@ export const getMyProfileService = async (studentId) => {
 // ==========================================
 
 export const updateProfileService = async (studentId, data) => {
+  if (!studentId) {
+    const error = new Error("Student ID is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const student = await Student.findById(studentId);
 
   if (!student) {
-    throw new Error("Student not found.");
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
   }
 
   const { fullName, gender, selectedBatch, deviceToken, deviceType } = data;
@@ -255,58 +283,91 @@ export const updateProfileService = async (studentId, data) => {
 // ==========================================
 
 export const logoutStudentService = async (studentId) => {
+  if (!studentId) {
+    const error = new Error("Student ID is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const student = await Student.findById(studentId);
 
   if (!student) {
-    throw new Error("Student not found.");
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
   }
 
+  // Clear Refresh Token
   student.refreshToken = "";
+
+  // Optional: Clear Device Token
+  // student.deviceToken = "";
+
   await student.save();
 
   return true;
 };
 
 // ==========================================
-// STEP 1: REQUEST DELETE OTP
+// STEP 1: REQUEST DELETE OTP SERVICE
 // ==========================================
 
 export const requestDeleteAccountOTPService = async (studentId) => {
+  if (!studentId) {
+    const error = new Error("Student ID is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const student = await Student.findById(studentId);
 
   if (!student) {
-    throw new Error("Student not found.");
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
   }
 
-  // Send OTP to mobile
+  // Send OTP to registered mobile number
   await sendOTP(student.mobile);
 
   return true;
 };
 
 // ==========================================
-// STEP 2: VERIFY OTP & DELETE ACCOUNT
+// STEP 2: VERIFY OTP & DELETE ACCOUNT SERVICE
 // ==========================================
 
 export const confirmDeleteAccountService = async (studentId, otp) => {
+  if (!studentId) {
+    const error = new Error("Student ID is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
   if (!otp) {
-    throw new Error("OTP is required.");
+    const error = new Error("OTP is required.");
+    error.statusCode = 400;
+    throw error;
   }
 
   const student = await Student.findById(studentId);
 
   if (!student) {
-    throw new Error("Student not found.");
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
   }
 
   // Verify OTP
   const verification = await verifyOTP(student.mobile, otp);
 
   if (verification.status !== "approved") {
-    throw new Error("Invalid OTP.");
+    const error = new Error("Invalid OTP.");
+    error.statusCode = 400;
+    throw error;
   }
 
-  // HARD DELETE
+  // Hard Delete Account
   await Student.findByIdAndDelete(studentId);
 
   return true;

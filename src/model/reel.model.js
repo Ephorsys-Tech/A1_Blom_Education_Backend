@@ -13,11 +13,16 @@ const reelSchema = new mongoose.Schema(
     },
     videoPublicId: {
       type: String,
-      required: [true, "Video public ID is required"],
     },
     duration: {
       type: Number,
-      required: [true, "Video duration is required"],
+      default: 0,
+    },
+    thumbnailUrl: {
+      type: String,
+    },
+    thumbnailPublicId: {
+      type: String,
     },
   },
   {

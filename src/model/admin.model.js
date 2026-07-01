@@ -25,8 +25,20 @@ const adminSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["admin"],
+      enum: ["admin", "web-manager", "app-manager"],
       default: "admin",
+    },
+
+    userId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+
+    isBlocked: {
+      type: Boolean,
+      default: false,
     },
 
     // ======================================
@@ -47,6 +59,8 @@ const adminSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+
 
 // ======================================
 // HASH PASSWORD

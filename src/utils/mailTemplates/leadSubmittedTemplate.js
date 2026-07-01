@@ -159,8 +159,8 @@ const leadSubmittedTemplate = ({
 
     <!-- COMPANY LOGO -->
     <img
-      src="https://saverasurgicalgroup.com/mylogo.png"
-      alt="Savera Surgical Group"
+      src="https://a1blomeducation.com/Thelogo.png"
+      alt="A1 Blom Education"
       width="120"
       style="display:block;margin:0 auto 20px;"
     />
@@ -174,7 +174,7 @@ const leadSubmittedTemplate = ({
         font-weight:700;
       "
     >
-      Savera Surgical Group
+      A1 Blom Education
     </h3>
 
     <p
@@ -185,7 +185,7 @@ const leadSubmittedTemplate = ({
         line-height:1.8;
       "
     >
-      Trusted Medical Equipment Rental & Sales Partner
+      Empowering Excellence in Education
     </p>
 
     <!-- CONTACT INFO -->
@@ -223,10 +223,10 @@ const leadSubmittedTemplate = ({
         >
           ✉ Email:
           <a
-            href="mailto:info@saverasurgicalgroup.com"
+            href="mailto:info@a1blomeducation.com"
             style="color:#93c5fd;text-decoration:none;"
           >
-            info@saverasurgicalgroup.com
+            info@a1blomeducation.com
           </a>
         </td>
       </tr>
@@ -241,11 +241,11 @@ const leadSubmittedTemplate = ({
         >
           🌐 Website:
           <a
-            href="https://saverasurgicalgroup.com"
+            href="https://a1blomeducation.com"
             target="_blank"
             style="color:#93c5fd;text-decoration:none;"
           >
-            www.saverasurgicalgroup.com
+            www.a1blomeducation.com
           </a>
         </td>
       </tr>
@@ -280,7 +280,7 @@ const leadSubmittedTemplate = ({
         font-size:13px;
       "
     >
-      Thank you for choosing Savera Surgical Group.
+      Thank you for choosing A1 Blom Education.
     </p>
 
     <!-- COPYRIGHT -->
@@ -291,7 +291,7 @@ const leadSubmittedTemplate = ({
         font-size:12px;
       "
     >
-      © ${new Date().getFullYear()} Savera Surgical Group.
+      © ${new Date().getFullYear()} A1 Blom Education.
       All Rights Reserved.
     </p>
 

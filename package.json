@@ -1,5 +1,5 @@
 {
-  "name": "savera_healthcare_backend",
+  "name": "a1_blom_education_backend",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -28,6 +28,7 @@
     "nodemon": "^3.1.14",
     "slugify": "^1.6.9",
     "socket.io": "^4.8.3",
-    "twilio": "^6.0.2"
+    "twilio": "^6.0.2",
+    "zod": "^4.4.3"
   }
 }

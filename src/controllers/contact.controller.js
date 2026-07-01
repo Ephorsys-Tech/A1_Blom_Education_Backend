@@ -1,16 +1,33 @@
 import ContactModel from "../model/contact.model.js";
+import { z } from "zod";
+
+const contactForm = z.object({
+  name: z
+    .string()
+    .min(2, "Name is required")
+    .regex(/^[A-Za-z\s]+$/, "Name should contain only letters"),
+    email: z.string().email({ message: "Enter a valid email" }),
+    number: z
+    .string()
+    .regex(/^[0-9]{10}$/, "Phone must be 10 digits"),
+  subject: z.string().min(3, "Subject is required"),
+  message: z.string().min(5, "Message is required"),
+});
 
 // Submit Contact Form
 export const submitContact = async (req, res) => {
   try {
-    const { name, email, number, subject, message } = req.body;
+    const result = contactForm.safeParse(req.body);
 
-    if (!name || !email || !number || !subject || !message) {
+    if (!result.success) {
       return res.status(400).json({
         success: false,
-        message: "All fields (name, email, number, subject, message) are required",
+        message: "Validation failed",
+        errors: result.error.format(),
       });
     }
+
+    const { name, email, number, subject, message } = result.data;
 
     const contact = await ContactModel.create({
       name,

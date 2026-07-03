@@ -114,15 +114,30 @@ export const updateBatch = async (req, res) => {
     if (isActive !== undefined) batch.isActive = isActive;
 
     if (req.file) {
-      // Delete old thumbnail if it exists
-      if (batch.thumbnail && batch.thumbnail.public_id) {
-        await deleteFromCloudinary(batch.thumbnail.public_id, "image");
+      try {
+        // Delete old thumbnail if it exists
+        if (batch.thumbnail && batch.thumbnail.public_id) {
+          try {
+            await deleteFromCloudinary(batch.thumbnail.public_id, "image");
+          } catch (cloudErr) {
+            console.warn(
+              "Cloudinary old thumbnail delete failed (non-critical):",
+              cloudErr.message
+            );
+          }
+        }
+        const uploadResult = await uploadToCloudinary(req.file.buffer, "batches", "image");
+        batch.thumbnail = {
+          public_id: uploadResult.publicId,
+          url: uploadResult.url,
+        };
+      } catch (uploadErr) {
+        console.warn(
+          "Cloudinary upload failed — thumbnail not updated:",
+          uploadErr.message
+        );
+        // Batch will be saved without changing the thumbnail
       }
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "batches", "image");
-      batch.thumbnail = {
-        public_id: uploadResult.publicId,
-        url: uploadResult.url,
-      };
     }
 
     await batch.save();
@@ -158,8 +173,17 @@ export const deleteBatch = async (req, res) => {
     }
 
     // Delete thumbnail from Cloudinary if exists
+    // Wrapped in its own try-catch: Cloudinary may be unconfigured or fail,
+    // but the database deletion should always proceed regardless.
     if (batch.thumbnail && batch.thumbnail.public_id) {
-      await deleteFromCloudinary(batch.thumbnail.public_id, "image");
+      try {
+        await deleteFromCloudinary(batch.thumbnail.public_id, "image");
+      } catch (cloudErr) {
+        console.warn(
+          "Cloudinary thumbnail delete failed (non-critical, continuing with DB delete):",
+          cloudErr.message
+        );
+      }
     }
 
     await Batch.findByIdAndDelete(id);

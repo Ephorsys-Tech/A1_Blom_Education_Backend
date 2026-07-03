@@ -27,7 +27,7 @@ const studentSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       minlength: 8,
       select: false,
-    },
+    },   
 
     avatar: {
       public_id: {
@@ -165,6 +165,57 @@ const studentSchema = new mongoose.Schema(
         isCompleted: {
           type: Boolean,
           default: false,
+        },
+
+        paymentId: {
+          type: String,
+          default: "",
+        },
+
+        amountPaid: {
+          type: Number,
+          default: 0,
+        },
+
+        paymentStatus: {
+          type: String,
+          enum: ["Pending", "Completed", "Failed"],
+          default: "Completed",
+        },
+      },
+    ],
+
+    // ==========================================
+    // ENROLLED BATCHES
+    // ==========================================
+
+    enrolledBatches: [
+      {
+        batch: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Batch",
+          required: true,
+        },
+
+        enrolledAt: {
+          type: Date,
+          default: Date.now,
+        },
+
+        paymentId: {
+          type: String,
+          default: "",
+        },
+
+        amountPaid: {
+          type: Number,
+          default: 0,
+        },
+
+        paymentStatus: {
+          type: String,
+          enum: ["Pending", "Completed", "Failed"],
+          default: "Completed",
         },
       },
     ],

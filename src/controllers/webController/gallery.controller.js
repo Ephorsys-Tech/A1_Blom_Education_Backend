@@ -1,5 +1,5 @@
-import GalleryModel from "../model/gallery.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.config.js";
+import GalleryModel from "../../model/webModel/gallery.model.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "../../config/cloudinary.config.js";
 
 // Upload Gallery Image
 export const uploadImage = async (req, res) => {

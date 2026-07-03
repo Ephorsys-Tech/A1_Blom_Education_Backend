@@ -1,9 +1,9 @@
-import CareerModel from "../model/career.model.js";
-import ApplicationModel from "../model/application.model.js";
+import CareerModel from "../../model/webModel/career.model.js";
+import ApplicationModel from "../../model/webModel/application.model.js";
 import {
   uploadToCloudinary,
   deleteFromCloudinary,
-} from "../config/cloudinary.config.js";
+} from "../../config/cloudinary.config.js";
 import { z } from "zod";
 
 const ApplyJobForm = z.object({

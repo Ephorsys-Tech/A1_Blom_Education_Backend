@@ -4,10 +4,10 @@ import {
   updateLecture,
   deleteLecture,
   getLectures,
-} from "../controllers/StudentsControllers/lecture.controller.js";
-import protect, { authorize } from "../middleware/auth.middleware.js";
-import { isAuthenticated } from "../middleware/isAuthenticated.js";
-import upload from "../middleware/multer.middleware.js";
+} from "../../controllers/appController/lecture.controller.js";
+import protect, { authorize } from "../../middleware/auth.middleware.js";
+import { isAuthenticated } from "../../middleware/isAuthenticated.js";
+import upload from "../../middleware/multer.middleware.js";
 
 const router = express.Router();
 

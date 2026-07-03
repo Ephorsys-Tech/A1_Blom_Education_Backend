@@ -1,5 +1,4 @@
-import asyncHandler from "../../middleware/asyncHandler.js";
-import Student from "../../model/StudentModel/student.model.js";
+import { respond } from "../../utils/respond.js";
 import {
   confirmDeleteAccountService,
   getMyProfileService,
@@ -16,8 +15,7 @@ import {
 // ==========================================
 // Register Student
 // ==========================================
-
-export const registerStudent = async (req, res) => {
+export const registerStudent = async (req, res, next) => {
   try {
     const student = await registerStudentService(req.body);
 
@@ -27,18 +25,14 @@ export const registerStudent = async (req, res) => {
       student,
     });
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
 // ==========================================
 // Verify Mobile OTP
 // ==========================================
-
-export const verifyMobileOTP = async (req, res) => {
+export const verifyMobileOTP = async (req, res, next) => {
   try {
     const result = await verifyMobileOTPService(req.body);
 
@@ -48,38 +42,26 @@ export const verifyMobileOTP = async (req, res) => {
       result,
     });
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
 // ==========================================
 // Resend Mobile OTP
 // ==========================================
-
-export const resendMobileOTP = async (req, res) => {
+export const resendMobileOTP = async (req, res, next) => {
   try {
     await resendMobileOTPService(req.body);
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP sent successfully.",
-    });
+    return respond(res, 200, "OTP sent successfully.");
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
 // ==========================================
 // Login Student
 // ==========================================
-
-export const loginStudent = async (req, res) => {
+export const loginStudent = async (req, res, next) => {
   try {
     const result = await loginStudentService(req.body);
 
@@ -91,18 +73,14 @@ export const loginStudent = async (req, res) => {
       student: result.student,
     });
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
 // ==========================================
 // GET MY PROFILE CONTROLLER
 // ==========================================
-
-export const getMyProfile = async (req, res) => {
+export const getMyProfile = async (req, res, next) => {
   try {
     const student = await getMyProfileService(req.student._id);
 
@@ -112,17 +90,14 @@ export const getMyProfile = async (req, res) => {
       student,
     });
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
+
 // ==========================================
 // UPDATE PROFILE CONTROLLER
 // ==========================================
-
-export const updateProfile = async (req, res) => {
+export const updateProfile = async (req, res, next) => {
   try {
     const student = await updateProfileService(req.student._id, req.body);
 
@@ -132,78 +107,51 @@ export const updateProfile = async (req, res) => {
       student,
     });
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
 // ==========================================
 // LOGOUT CONTROLLER
 // ==========================================
-
-export const logoutStudent = async (req, res) => {
+export const logoutStudent = async (req, res, next) => {
   try {
     await logoutStudentService(req.student._id);
-
-    return res.status(200).json({
-      success: true,
-      message: "Logout successful.",
-    });
+    return respond(res, 200, "Logout successful.");
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
+
 // ==========================================
 // REQUEST DELETE ACCOUNT OTP CONTROLLER
 // ==========================================
-
-export const requestDeleteAccountOTP = async (req, res) => {
+export const requestDeleteAccountOTP = async (req, res, next) => {
   try {
     await requestDeleteAccountOTPService(req.student._id);
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP sent for account deletion.",
-    });
+    return respond(res, 200, "OTP sent for account deletion.");
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
 // ==========================================
 // CONFIRM DELETE ACCOUNT CONTROLLER
 // ==========================================
-
-export const confirmDeleteAccount = async (req, res) => {
+export const confirmDeleteAccount = async (req, res, next) => {
   try {
     const { otp } = req.body;
-
     await confirmDeleteAccountService(req.student._id, otp);
-
-    return res.status(200).json({
-      success: true,
-      message: "Account deleted successfully.",
-    });
+    return respond(res, 200, "Account deleted successfully.");
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
 // ==========================================
 // ENROLL STUDENT CONTROLLER
 // ==========================================
-export const enrollStudent = async (req, res) => {
+export const enrollStudent = async (req, res, next) => {
   try {
     const result = await enrollStudentService(req.student._id, req.body);
 
@@ -213,9 +161,6 @@ export const enrollStudent = async (req, res) => {
       student: result,
     });
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };

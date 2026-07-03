@@ -5,9 +5,9 @@ import {
   getActiveAnnouncement,
   toggleAnnouncement,
   deleteAnnouncement,
-} from "../controllers/announcement.controller.js";
-import protect from "../middleware/auth.middleware.js";
-import upload from "../middleware/multer.middleware.js";
+} from "../../controllers/webController/announcement.controller.js";
+import protect from "../../middleware/auth.middleware.js";
+import upload from "../../middleware/multer.middleware.js";
 
 const router = express.Router();
 

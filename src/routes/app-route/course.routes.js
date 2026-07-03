@@ -6,9 +6,9 @@ import {
   getCourses,
   getAdminCourses,
   getCourseById,
-} from "../controllers/StudentsControllers/course.controller.js";
-import protect, { authorize } from "../middleware/auth.middleware.js";
-import upload from "../middleware/multer.middleware.js";
+} from "../../controllers/appController/course.controller.js";
+import protect, { authorize } from "../../middleware/auth.middleware.js";
+import upload from "../../middleware/multer.middleware.js";
 
 const router = express.Router();
 

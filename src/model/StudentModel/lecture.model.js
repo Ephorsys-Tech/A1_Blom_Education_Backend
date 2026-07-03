@@ -1,0 +1,64 @@
+import mongoose from "mongoose";
+
+const lectureSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, "Lecture title is required"],
+      trim: true,
+    },
+
+    description: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    videoUrl: {
+      type: String,
+      required: [true, "Lecture video URL is required"],
+    },
+
+    videoPublicId: {
+      type: String,
+      default: "",
+    },
+
+    duration: {
+      type: Number,
+      default: 0, // In seconds
+    },
+
+    chapter: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Chapter",
+      required: [true, "Chapter reference is required"],
+    },
+
+    course: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Course",
+      required: [true, "Course/Subject reference is required"],
+    },
+
+    isPreview: {
+      type: Boolean,
+      default: false, // If true, non-purchased/unenrolled students can play this video
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    sortOrder: {
+      type: Number,
+      default: 0,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export default mongoose.model("Lecture", lectureSchema);

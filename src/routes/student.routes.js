@@ -9,6 +9,7 @@ import {
   resendMobileOTP,
   updateProfile,
   verifyMobileOTP,
+  enrollStudent,
 } from "../controllers/StudentsControllers/student.controller.js";
 import { isAuthenticated } from "../middleware/isAuthenticated.js";
 
@@ -48,5 +49,10 @@ router.post(
 
 // Step 2: Confirm OTP & Delete
 router.delete("/delete-account/confirm", isAuthenticated, confirmDeleteAccount);
+
+// ==========================================
+// Enrollment Route
+// ==========================================
+router.post("/enroll", isAuthenticated, enrollStudent);
 
 export default router;

@@ -10,6 +10,7 @@ import {
   resendMobileOTPService,
   updateProfileService,
   verifyMobileOTPService,
+  enrollStudentService,
 } from "../../services/student.service.js";
 
 // ==========================================
@@ -190,6 +191,26 @@ export const confirmDeleteAccount = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Account deleted successfully.",
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ==========================================
+// ENROLL STUDENT CONTROLLER
+// ==========================================
+export const enrollStudent = async (req, res) => {
+  try {
+    const result = await enrollStudentService(req.student._id, req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully enrolled in ${req.body.type || "item"}.`,
+      student: result,
     });
   } catch (error) {
     return res.status(error.statusCode || 400).json({

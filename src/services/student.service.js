@@ -1,6 +1,6 @@
-import Student from "../model/StudentModel/student.model.js";
-import Batch from "../model/StudentModel/batch.model.js";
-import Course from "../model/StudentModel/course.model.js";
+import Student from "../model/appModel/student.model.js";
+import Batch from "../model/appModel/batch.model.js";
+import Course from "../model/appModel/course.model.js";
 import { generateAccessToken } from "../utils/generateAccessToken.js";
 import { generateOTP } from "../utils/generateOTP.js";
 import { generateRefreshToken } from "../utils/generateRefreshToken.js";

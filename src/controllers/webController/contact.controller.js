@@ -1,4 +1,4 @@
-import ContactModel from "../model/contact.model.js";
+import ContactModel from "../../model/webModel/contact.model.js";
 import { z } from "zod";
 
 const contactForm = z.object({

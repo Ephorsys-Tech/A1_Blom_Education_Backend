@@ -4,9 +4,9 @@ import {
   deleteBlog,
   getAllBlogs,
   getBlogById,
-} from "../controllers/blog.controller.js";
-import protect from "../middleware/auth.middleware.js";
-import upload from "../middleware/multer.middleware.js";
+} from "../../controllers/webController/blog.controller.js";
+import protect from "../../middleware/auth.middleware.js";
+import upload from "../../middleware/multer.middleware.js";
 
 const router = express.Router();
 

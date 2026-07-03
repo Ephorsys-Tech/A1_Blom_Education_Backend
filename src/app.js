@@ -3,6 +3,7 @@ import morgan from "morgan";
 import router from "./routes/index.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import { globalErrorHandler } from "./middleware/globalErrorHandler.js";
 
 const app = express();
 
@@ -55,21 +56,6 @@ app.use("/api/v1", router);
 // ---------------------------------------------
 // Global Error Handler
 // ---------------------------------------------
-app.use((err, req, res, next) => {
-  console.error("Global Error:", err);
-
-  if (err.name === "MulterError") {
-    return res.status(400).json({
-      success: false,
-      message: `File upload error: ${err.message}`,
-      field: err.field,
-    });
-  }
-
-  return res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Internal server error.",
-  });
-});
+app.use(globalErrorHandler);
 
 export default app;

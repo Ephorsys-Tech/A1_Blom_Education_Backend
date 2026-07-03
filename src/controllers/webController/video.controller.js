@@ -1,4 +1,4 @@
-import VideoModel from "../model/video.model.js";
+import VideoModel from "../../model/webModel/video.model.js";
 
 // Upload Video
 export const uploadVideo = async (req, res) => {

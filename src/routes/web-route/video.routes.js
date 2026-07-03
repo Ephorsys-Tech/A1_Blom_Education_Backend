@@ -5,8 +5,8 @@ import {
   getAllVideos,
   getPublicVideos,
   toggleVideoStatus,
-} from "../controllers/video.controller.js";
-import protect from "../middleware/auth.middleware.js";
+} from "../../controllers/webController/video.controller.js";
+import protect from "../../middleware/auth.middleware.js";
 
 const router = express.Router();
 

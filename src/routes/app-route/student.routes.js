@@ -10,8 +10,8 @@ import {
   updateProfile,
   verifyMobileOTP,
   enrollStudent,
-} from "../controllers/StudentsControllers/student.controller.js";
-import { isAuthenticated } from "../middleware/isAuthenticated.js";
+} from "../../controllers/appController/student.controller.js";
+import { isAuthenticated } from "../../middleware/isAuthenticated.js";
 
 const router = express.Router();
 

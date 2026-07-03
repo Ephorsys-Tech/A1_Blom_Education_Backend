@@ -1,5 +1,5 @@
-import AnnouncementModel from "../model/announcement.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.config.js";
+import AnnouncementModel from "../../model/webModel/announcement.model.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "../../config/cloudinary.config.js";
 
 // Create Announcement
 export const createAnnouncement = async (req, res) => {

@@ -27,7 +27,7 @@ const studentSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       minlength: 8,
       select: false,
-    },
+    },   
 
     avatar: {
       public_id: {

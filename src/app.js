@@ -9,9 +9,16 @@ const app = express();
 // ---------------------------------------------
 // CORS
 // ---------------------------------------------
+// ---------------------------------------------
+// CORS
+// ---------------------------------------------
 app.use(
   cors({
-    origin: "*",
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      return callback(null, origin);
+    },
+    credentials: true,
   }),
 );
 

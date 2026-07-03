@@ -11,7 +11,11 @@ const app = express();
 // ---------------------------------------------
 app.use(
   cors({
-    origin: "*",
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      return callback(null, origin);
+    },
+    credentials: true,
   }),
 );
 
@@ -44,5 +48,25 @@ app.get("/test", (req, res) => {
 // API Routes
 // ---------------------------------------------
 app.use("/api/v1", router);
+
+// ---------------------------------------------
+// Global Error Handler
+// ---------------------------------------------
+app.use((err, req, res, next) => {
+  console.error("Global Error:", err);
+
+  if (err.name === "MulterError") {
+    return res.status(400).json({
+      success: false,
+      message: `File upload error: ${err.message}`,
+      field: err.field,
+    });
+  }
+
+  return res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal server error.",
+  });
+});
 
 export default app;

@@ -7,7 +7,7 @@ import {
   getAdminBatches,
   getBatchById,
 } from "../controllers/StudentsControllers/batch.controller.js";
-import protect from "../middleware/auth.middleware.js";
+import protect, { authorize } from "../middleware/auth.middleware.js";
 import upload from "../middleware/multer.middleware.js";
 
 const router = express.Router();
@@ -30,18 +30,18 @@ router.get("/:id", getBatchById);
 
 // Create Batches
 // POST -> api/v1/batches   
-router.post("/", protect, upload.single("thumbnail"), createBatch);
+router.post("/", protect, authorize("admin", "app-manager"), upload.single("thumbnail"), createBatch);
 
 // get batches
 // get -> api/v1/batches/admin/all
-router.get("/admin/all", protect, getAdminBatches);
+router.get("/admin/all", protect, authorize("admin", "app-manager"), getAdminBatches);
 
 // update batch
 // put -> api/v1/batches/:id
-router.put("/:id", protect, upload.single("thumbnail"), updateBatch);
+router.put("/:id", protect, authorize("admin", "app-manager"), upload.single("thumbnail"), updateBatch);
 
 // delete batch
 // delete -> api/v1/batches/:id
-router.delete("/:id", protect, deleteBatch);
+router.delete("/:id", protect, authorize("admin", "app-manager"), deleteBatch);
 
 export default router;

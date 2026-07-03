@@ -9,6 +9,9 @@ import announcementRoutes from "../routes/announcement.routes.js";
 import careerRoutes from "../routes/career.routes.js";
 import studentRoutes from "../routes/student.routes.js";
 import batchRoutes from "../routes/batch.route.js";
+import courseRoutes from "../routes/course.routes.js";
+import chapterRoutes from "../routes/chapter.route.js";
+import lectureRoutes from "../routes/lecture.route.js";
 
 const router = express.Router();
 
@@ -61,5 +64,20 @@ router.use("/student", studentRoutes);
 // Batch Routes
 // ========================================
 router.use("/batches", batchRoutes);
+
+// ========================================
+// Course Routes
+// ========================================
+router.use("/courses", courseRoutes);
+
+// ========================================
+// Chapter Routes
+// ========================================
+router.use("/chapters", chapterRoutes);
+
+// ========================================
+// Lecture Routes
+// ========================================
+router.use("/lectures", lectureRoutes);
 
 export default router;

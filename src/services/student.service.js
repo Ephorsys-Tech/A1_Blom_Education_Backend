@@ -6,6 +6,7 @@ import { generateOTP } from "../utils/generateOTP.js";
 import { generateRefreshToken } from "../utils/generateRefreshToken.js";
 import { sendOTP } from "../utils/sendOTP.js";
 import { verifyOTP } from "../utils/verifyOTP.js";
+import jwt from "jsonwebtoken";
 
 // ==========================================
 // Register Student Service
@@ -207,7 +208,7 @@ export const loginStudentService = async (data) => {
   // Generate Tokens
   // ==========================================
 
-  const accessToken = generateAccessToken(student._id);
+  const accessToken = generateAccessToken(student);
   const refreshToken = generateRefreshToken(student._id);
 
   // ==========================================
@@ -284,8 +285,11 @@ export const updateProfileService = async (studentId, data) => {
 
   if (fullName) student.fullName = fullName;
   if (gender) student.gender = gender;
-  
-  if (selectedBatch && selectedBatch.toString() !== student.selectedBatch.toString()) {
+
+  if (
+    selectedBatch &&
+    selectedBatch.toString() !== student.selectedBatch.toString()
+  ) {
     const newBatch = await Batch.findById(selectedBatch);
     if (!newBatch) {
       const error = new Error("New selected batch does not exist.");
@@ -295,7 +299,9 @@ export const updateProfileService = async (studentId, data) => {
 
     // Decrement count from old batch
     if (student.selectedBatch) {
-      await Batch.findByIdAndUpdate(student.selectedBatch, { $inc: { totalStudents: -1 } });
+      await Batch.findByIdAndUpdate(student.selectedBatch, {
+        $inc: { totalStudents: -1 },
+      });
     }
 
     // Increment count in new batch
@@ -337,6 +343,9 @@ export const logoutStudentService = async (studentId) => {
 
   // Clear Refresh Token
   student.refreshToken = "";
+
+  // Invalidate any outstanding Access Tokens immediately
+  student.tokenVersion = (student.tokenVersion || 0) + 1;
 
   // Optional: Clear Device Token
   // student.deviceToken = "";
@@ -407,15 +416,17 @@ export const confirmDeleteAccountService = async (studentId, otp) => {
 
   // Decrement totalStudents count in their selected batch
   if (student.selectedBatch) {
-    await Batch.findByIdAndUpdate(student.selectedBatch, { $inc: { totalStudents: -1 } });
+    await Batch.findByIdAndUpdate(student.selectedBatch, {
+      $inc: { totalStudents: -1 },
+    });
   }
 
   // Decrement totalStudents count in all enrolled batches
   if (student.enrolledBatches && student.enrolledBatches.length > 0) {
-    const batchIds = student.enrolledBatches.map(b => b.batch);
+    const batchIds = student.enrolledBatches.map((b) => b.batch);
     await Batch.updateMany(
       { _id: { $in: batchIds } },
-      { $inc: { totalStudents: -1 } }
+      { $inc: { totalStudents: -1 } },
     );
   }
 
@@ -433,14 +444,18 @@ export const enrollStudentService = async (studentId, data) => {
   const { type, id, paymentId, amountPaid } = data;
 
   if (!type || !id) {
-    const error = new Error("Enrollment type ('course' or 'batch') and target ID are required.");
+    const error = new Error(
+      "Enrollment type ('course' or 'batch') and target ID are required.",
+    );
     error.statusCode = 400;
     throw error;
   }
 
   // Payment check
   if (!paymentId || amountPaid === undefined || Number(amountPaid) < 0) {
-    const error = new Error("Valid payment details (paymentId, amountPaid) are required for enrollment.");
+    const error = new Error(
+      "Valid payment details (paymentId, amountPaid) are required for enrollment.",
+    );
     error.statusCode = 400;
     throw error;
   }
@@ -462,7 +477,7 @@ export const enrollStudentService = async (studentId, data) => {
 
     // Check if student is already enrolled in the course
     const isEnrolled = student.enrolledCourses.some(
-      (item) => item.course.toString() === course._id.toString()
+      (item) => item.course.toString() === course._id.toString(),
     );
 
     if (isEnrolled) {
@@ -478,7 +493,6 @@ export const enrollStudentService = async (studentId, data) => {
       amountPaid,
       paymentStatus: "Completed",
     });
-
   } else if (type === "batch") {
     const batch = await Batch.findById(id);
     if (!batch || !batch.isActive) {
@@ -489,7 +503,7 @@ export const enrollStudentService = async (studentId, data) => {
 
     // Check if student is already enrolled in the batch
     const isEnrolledInBatch = student.enrolledBatches.some(
-      (item) => item.batch.toString() === batch._id.toString()
+      (item) => item.batch.toString() === batch._id.toString(),
     );
 
     if (isEnrolledInBatch) {
@@ -512,7 +526,7 @@ export const enrollStudentService = async (studentId, data) => {
     // Add each course to enrolledCourses if not already present
     for (const course of courses) {
       const isAlreadyEnrolled = student.enrolledCourses.some(
-        (item) => item.course.toString() === course._id.toString()
+        (item) => item.course.toString() === course._id.toString(),
       );
 
       if (!isAlreadyEnrolled) {
@@ -529,9 +543,10 @@ export const enrollStudentService = async (studentId, data) => {
     // Increment totalStudents count for the enrolled batch
     batch.totalStudents = (batch.totalStudents || 0) + 1;
     await batch.save();
-
   } else {
-    const error = new Error("Invalid enrollment type. Must be 'course' or 'batch'.");
+    const error = new Error(
+      "Invalid enrollment type. Must be 'course' or 'batch'.",
+    );
     error.statusCode = 400;
     throw error;
   }
@@ -542,4 +557,80 @@ export const enrollStudentService = async (studentId, data) => {
     .populate("selectedBatch")
     .populate("enrolledCourses.course")
     .populate("enrolledBatches.batch");
+};
+
+// ==========================================
+// REFRESH ACCESS TOKEN SERVICE
+// ==========================================
+
+export const refreshAccessTokenService = async (incomingRefreshToken) => {
+  // If no refresh token found then login again
+  if (!incomingRefreshToken) {
+    const error = new Error("Refresh token is missing. Please login again.");
+    error.statusCode = 401;
+    error.code = "SESSION_EXPIRED";
+    throw error;
+  }
+
+  // ------------------------------------------
+  // Verify Refresh Token Signature & Expiry
+  // This is the check that decides everything:
+  // - expired REFRESH_TOKEN_EXPIRE (30d) → throws here
+  // - tampered/invalid signature       → throws here
+  // ------------------------------------------
+
+  let decoded;
+  try {
+    decoded = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET,
+    );
+  } catch (err) {
+    const error = new Error("Session expired. Please login again.");
+    error.statusCode = 401;
+    error.code = "SESSION_EXPIRED";
+    throw error;
+  }
+
+  // ------------------------------------------
+  // Find Student
+  // (refreshToken field has select:false, so pull it explicitly)
+  // ------------------------------------------
+
+  const student = await Student.findById(decoded.id).select("+refreshToken");
+  if (!student) {
+    const error = new Error("Student not found. Please login again.");
+    error.statusCode = 401;
+    error.code = "SESSION_EXPIRED";
+    throw error;
+  }
+
+  if (student.isBlocked || !student.isActive) {
+    const error = new Error("Account is blocked or inactive.");
+    error.statusCode = 403;
+    error.code = "ACCOUNT_BLOCKED";
+    throw error;
+  }
+
+  // ------------------------------------------
+  // Confirm this refresh token is the one we
+  // actually issued (e.g. student logged out on
+  // this device already → refreshToken was cleared)
+  // ------------------------------------------
+  if (!student.refreshToken || student.refreshToken !== incomingRefreshToken) {
+    const error = new Error("Session expired. Please login again.");
+    error.statusCode = 401;
+    error.code = "SESSION_EXPIRED";
+    throw error;
+  }
+
+  // ------------------------------------------
+  // Everything checks out → issue a fresh
+  // Access Token only. Refresh Token is left
+  // untouched so it keeps counting down its
+  // own 30d lifespan.
+  // ------------------------------------------
+  const newAccessToken = generateAccessToken(student);
+
+  return { accessToken: newAccessToken };
 };

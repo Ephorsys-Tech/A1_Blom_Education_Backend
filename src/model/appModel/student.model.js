@@ -27,7 +27,7 @@ const studentSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       minlength: 8,
       select: false,
-    },   
+    },
 
     avatar: {
       public_id: {
@@ -64,6 +64,15 @@ const studentSchema = new mongoose.Schema(
       type: String,
       default: "student",
       enum: ["student"],
+    },
+
+    // ==========================================
+    // TOKEN VERSION (used to invalidate access tokens instantly)
+    // ==========================================
+
+    tokenVersion: {
+      type: Number,
+      default: 0,
     },
 
     // ==========================================

@@ -19,10 +19,29 @@ export const isAuthenticated = async (req, res, next) => {
     const token = authHeader.split(" ")[1];
 
     // ==========================================
-    // Verify Token
+    // Verify Token (separated so we can tell
+    // "expired" apart from "invalid/tampered")
     // ==========================================
 
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    let decoded;
+
+    try {
+      decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    } catch (error) {
+      if (error.name === "TokenExpiredError") {
+        return res.status(401).json({
+          success: false,
+          code: "TOKEN_EXPIRED",
+          message: "Access token expired. Please refresh your session.",
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        code: "INVALID_TOKEN",
+        message: "Invalid access token.",
+      });
+    }
 
     // ==========================================
     // Find Student
@@ -48,6 +67,22 @@ export const isAuthenticated = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Account has been blocked.",
+      });
+    }
+
+    // ==========================================
+    // Check Token Version
+    // (catches tokens issued before a logout /
+    // password change / forced revoke bumped
+    // tokenVersion — kills them even if the JWT
+    // itself hasn't naturally expired yet)
+    // ==========================================
+
+    if (decoded.tv !== student.tokenVersion) {
+      return res.status(401).json({
+        success: false,
+        code: "INVALID_TOKEN",
+        message: "Session has been logged out.",
       });
     }
 

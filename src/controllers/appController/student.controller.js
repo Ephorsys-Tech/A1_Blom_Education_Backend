@@ -10,6 +10,7 @@ import {
   updateProfileService,
   verifyMobileOTPService,
   enrollStudentService,
+  refreshAccessTokenService
 } from "../../services/student.service.js";
 
 // ==========================================
@@ -162,5 +163,29 @@ export const enrollStudent = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+// ==========================================
+// Refresh Access Token
+// ==========================================
+export const refreshAccessToken = async (req, res, next) => {
+  try {
+    const incomingRefreshToken = req.body.refreshToken;
+
+    const result = await refreshAccessTokenService(incomingRefreshToken);
+
+    return res.status(200).json({
+      success: true,
+      message: "Access token refreshed successfully.",
+      accessToken: result.accessToken,
+    });
+  } catch (error) {
+    // Errors thrown by the service carry statusCode + code
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      code: error.code || "SERVER_ERROR",
+      message: error.message || "Something went wrong.",
+    });
   }
 };

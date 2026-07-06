@@ -10,6 +10,7 @@ import {
   updateProfile,
   verifyMobileOTP,
   enrollStudent,
+  refreshAccessToken
 } from "../../controllers/appController/student.controller.js";
 import { isAuthenticated } from "../../middleware/isAuthenticated.js";
 
@@ -54,5 +55,12 @@ router.delete("/delete-account/confirm", isAuthenticated, confirmDeleteAccount);
 // Enrollment Route
 // ==========================================
 router.post("/enroll", isAuthenticated, enrollStudent);
+
+// ==========================================
+// Refresh Access Token
+// (Public — no isAuthenticated here, since the
+// whole point is that the access token has expired)
+// ==========================================
+router.post("/refresh-token", refreshAccessToken);
 
 export default router;

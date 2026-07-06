@@ -29,6 +29,14 @@ const studentSchema = new mongoose.Schema(
       select: false,
     },
 
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      trim: true,
+      unique: true,
+      lowercase: true,
+    },
+
     avatar: {
       public_id: {
         type: String,
@@ -46,6 +54,13 @@ const studentSchema = new mongoose.Schema(
       required: true,
     },
 
+    classNumber: {
+      type: Number,
+      required: true,
+      min: 6,
+      max: 10,
+    },
+
     // ==========================================
     // BATCH
     // ==========================================
@@ -53,7 +68,6 @@ const studentSchema = new mongoose.Schema(
     selectedBatch: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Batch",
-      required: true,
     },
 
     // ==========================================

@@ -3,15 +3,23 @@ import morgan from "morgan";
 import router from "./routes/index.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import { globalErrorHandler } from "./middleware/globalErrorHandler.js";
 
 const app = express();
 
 // ---------------------------------------------
 // CORS
 // ---------------------------------------------
+// ---------------------------------------------
+// CORS
+// ---------------------------------------------
 app.use(
   cors({
-    origin: "*",
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      return callback(null, origin);
+    },
+    credentials: true,
   }),
 );
 
@@ -44,5 +52,10 @@ app.get("/test", (req, res) => {
 // API Routes
 // ---------------------------------------------
 app.use("/api/v1", router);
+
+// ---------------------------------------------
+// Global Error Handler
+// ---------------------------------------------
+app.use(globalErrorHandler);
 
 export default app;

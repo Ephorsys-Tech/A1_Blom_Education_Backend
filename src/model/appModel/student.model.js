@@ -29,6 +29,14 @@ const studentSchema = new mongoose.Schema(
       select: false,
     },
 
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      trim: true,
+      unique: true,
+      lowercase: true,
+    },
+
     avatar: {
       public_id: {
         type: String,
@@ -46,6 +54,13 @@ const studentSchema = new mongoose.Schema(
       required: true,
     },
 
+    classNumber: {
+      type: Number,
+      required: true,
+      min: 6,
+      max: 10,
+    },
+
     // ==========================================
     // BATCH
     // ==========================================
@@ -53,7 +68,6 @@ const studentSchema = new mongoose.Schema(
     selectedBatch: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Batch",
-      required: true,
     },
 
     // ==========================================
@@ -67,12 +81,34 @@ const studentSchema = new mongoose.Schema(
     },
 
     // ==========================================
+    // TOKEN VERSION (used to invalidate access tokens instantly)
+    // ==========================================
+
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
+
+    // ==========================================
     // MOBILE VERIFICATION
     // ==========================================
 
     isMobileVerified: {
       type: Boolean,
       default: false,
+    },
+
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerificationOTP: {
+      type: String,
+    },
+
+    emailVerificationOTPExpires: {
+      type: Date,
     },
 
     // ==========================================
@@ -165,6 +201,57 @@ const studentSchema = new mongoose.Schema(
         isCompleted: {
           type: Boolean,
           default: false,
+        },
+
+        paymentId: {
+          type: String,
+          default: "",
+        },
+
+        amountPaid: {
+          type: Number,
+          default: 0,
+        },
+
+        paymentStatus: {
+          type: String,
+          enum: ["Pending", "Completed", "Failed"],
+          default: "Completed",
+        },
+      },
+    ],
+
+    // ==========================================
+    // ENROLLED BATCHES
+    // ==========================================
+
+    enrolledBatches: [
+      {
+        batch: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Batch",
+          required: true,
+        },
+
+        enrolledAt: {
+          type: Date,
+          default: Date.now,
+        },
+
+        paymentId: {
+          type: String,
+          default: "",
+        },
+
+        amountPaid: {
+          type: Number,
+          default: 0,
+        },
+
+        paymentStatus: {
+          type: String,
+          enum: ["Pending", "Completed", "Failed"],
+          default: "Completed",
         },
       },
     ],

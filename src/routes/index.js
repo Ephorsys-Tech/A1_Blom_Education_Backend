@@ -1,13 +1,17 @@
 import express from "express";
-import adminRoutes from "../routes/admin.routes.js";
-import videoRoutes from "../routes/video.routes.js";
-import blogRoutes from "../routes/blog.routes.js";
-import galleryRoutes from "../routes/gallery.routes.js";
-import contactRoutes from "../routes/contact.routes.js";
-import reelRoutes from "../routes/reel.routes.js";
-import announcementRoutes from "../routes/announcement.routes.js";
-import careerRoutes from "../routes/career.routes.js";
-import studentRoutes from "../routes/student.routes.js";
+import adminRoutes from "./admin.routes.js";
+import videoRoutes from "./web-route/video.routes.js";
+import blogRoutes from "./web-route/blog.routes.js";
+import galleryRoutes from "./web-route/gallery.routes.js";
+import contactRoutes from "./web-route/contact.routes.js";
+import reelRoutes from "./web-route/reel.routes.js";
+import announcementRoutes from "./web-route/announcement.routes.js";
+import careerRoutes from "./web-route/career.routes.js";
+import studentRoutes from "./app-route/student.routes.js";
+import batchRoutes from "./app-route/batch.route.js";
+import courseRoutes from "./app-route/course.routes.js";
+import chapterRoutes from "./app-route/chapter.route.js";
+import lectureRoutes from "./app-route/lecture.route.js";
 
 const router = express.Router();
 
@@ -55,5 +59,25 @@ router.use("/careers", careerRoutes);
 // Student Routes
 // ========================================
 router.use("/student", studentRoutes);
+
+// ========================================
+// Batch Routes
+// ========================================
+router.use("/batches", batchRoutes);
+
+// ========================================
+// Course Routes
+// ========================================
+router.use("/courses", courseRoutes);
+
+// ========================================
+// Chapter Routes
+// ========================================
+router.use("/chapters", chapterRoutes);
+
+// ========================================
+// Lecture Routes
+// ========================================
+router.use("/lectures", lectureRoutes);
 
 export default router;

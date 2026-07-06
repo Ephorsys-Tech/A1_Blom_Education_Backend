@@ -1,8 +1,8 @@
-import BlogModel from "../model/blog.model.js";
+import BlogModel from "../../model/webModel/blog.model.js";
 import {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-} from "../config/cloudinary.config.js";
+   uploadToCloudinary,
+   deleteFromCloudinary,
+ } from "../../config/cloudinary.config.js";
 import { z } from "zod";
 
 const CreateBlogData = z.object({

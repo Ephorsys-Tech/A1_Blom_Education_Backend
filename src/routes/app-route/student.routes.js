@@ -9,8 +9,12 @@ import {
   resendMobileOTP,
   updateProfile,
   verifyMobileOTP,
-} from "../controllers/StudentsControllers/student.controller.js";
-import { isAuthenticated } from "../middleware/isAuthenticated.js";
+  enrollStudent,
+  refreshAccessToken,
+  verifyEmailOTP,
+  resendEmailOTP
+} from "../../controllers/appController/student.controller.js";
+import { isAuthenticated } from "../../middleware/isAuthenticated.js";
 
 const router = express.Router();
 
@@ -21,6 +25,8 @@ const router = express.Router();
 router.post("/register", registerStudent);
 router.post("/verify-mobile-otp", verifyMobileOTP);
 router.post("/resend-mobile-otp", resendMobileOTP);
+router.post("/verify-email-otp", verifyEmailOTP);
+router.post("/resend-email-otp", resendEmailOTP);
 router.post("/login", loginStudent);
 
 // ==========================================
@@ -48,5 +54,17 @@ router.post(
 
 // Step 2: Confirm OTP & Delete
 router.delete("/delete-account/confirm", isAuthenticated, confirmDeleteAccount);
+
+// ==========================================
+// Enrollment Route
+// ==========================================
+router.post("/enroll", isAuthenticated, enrollStudent);
+
+// ==========================================
+// Refresh Access Token
+// (Public — no isAuthenticated here, since the
+// whole point is that the access token has expired)
+// ==========================================
+router.post("/refresh-token", refreshAccessToken);
 
 export default router;

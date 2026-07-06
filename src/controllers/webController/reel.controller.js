@@ -1,5 +1,5 @@
-import ReelModel from "../model/reel.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.config.js";
+import ReelModel from "../../model/webModel/reel.model.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "../../config/cloudinary.config.js";
 
 // Upload Reel
 export const uploadReel = async (req, res) => {

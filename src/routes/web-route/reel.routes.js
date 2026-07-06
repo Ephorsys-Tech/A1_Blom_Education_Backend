@@ -4,9 +4,9 @@ import {
   deleteReel,
   getReels,
   updateReel,
-} from "../controllers/reel.controller.js";
-import protect from "../middleware/auth.middleware.js";
-import upload from "../middleware/multer.middleware.js";
+} from "../../controllers/webController/reel.controller.js";
+import protect from "../../middleware/auth.middleware.js";
+import upload from "../../middleware/multer.middleware.js";
 
 const router = express.Router();
 

@@ -1,51 +1,67 @@
-import Student from "../model/StudentModel/student.model.js";
+import Student from "../model/appModel/student.model.js";
+import Batch from "../model/appModel/batch.model.js";
+import Course from "../model/appModel/course.model.js";
 import { generateAccessToken } from "../utils/generateAccessToken.js";
 import { generateOTP } from "../utils/generateOTP.js";
 import { generateRefreshToken } from "../utils/generateRefreshToken.js";
 import { sendOTP } from "../utils/sendOTP.js";
 import { verifyOTP } from "../utils/verifyOTP.js";
+import { sendEmailOTP } from "../utils/sendEmailOTP.js";
+import { sendCongratulationMail } from "../utils/sendCongratulationMail.js";
+import jwt from "jsonwebtoken";
 
 // ==========================================
 // Register Student Service
 // ==========================================
-export const registerStudentService = async (data) => {
-  const { fullName, mobile, password, gender, selectedBatch, acceptedTerms } =
-    data;
+  export const registerStudentService = async (data) => {
+    const { fullName, email, mobile, password, classNumber, gender, acceptedTerms } = data;
 
-  if (!fullName || !mobile || !password || !gender || !selectedBatch) {
-    throw new Error("All fields are required.");
-  }
+    const mobileExists = await Student.findOne({ mobile });
+    if (mobileExists) {
+      throw new Error("Mobile number already registered.");
+    }
 
-  if (!acceptedTerms) {
-    throw new Error("Please accept Terms & Conditions.");
-  }
+    const emailExists = await Student.findOne({ email });
+    if (emailExists) {
+      throw new Error("Email address already registered.");
+    }
 
-  const mobileExists = await Student.findOne({ mobile });
+    const emailOTP = generateOTP();
+    const emailOTPExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-  if (mobileExists) {
-    throw new Error("Mobile number already registered.");
-  }
+    const student = await Student.create({
+      fullName,
+      email,
+      mobile,
+      password,
+      classNumber,
+      gender,
+      acceptedTerms,
+      acceptedTermsAt: new Date(),
+      emailVerificationOTP: emailOTP,
+      emailVerificationOTPExpires: emailOTPExpires,
+    });
 
-  const student = await Student.create({
-    fullName,
-    mobile,
-    password,
-    gender,
-    selectedBatch,
-    acceptedTerms,
-    acceptedTermsAt: new Date(),
-  });
+    // Send mobile and email OTPs
+    await sendOTP(student.mobile);
+    await sendEmailOTP(student.email, emailOTP);
 
-  await sendOTP(student.mobile);
+    // Send Congratulation/Welcome email
+    try {
+      await sendCongratulationMail(student.email, student.fullName, { mobile, classNumber });
+    } catch (err) {
+      console.error("Failed to send congratulation email:", err);
+    }
 
-  return {
-    id: student._id,
-    fullName: student.fullName,
-    mobile: student.mobile,
-    selectedBatch: student.selectedBatch,
-    isMobileVerified: student.isMobileVerified,
+    return {
+      id: student._id,
+      fullName: student.fullName,
+      mobile: student.mobile,
+      email: student.email,
+      isMobileVerified: student.isMobileVerified,
+      isEmailVerified: student.isEmailVerified,
+    };
   };
-};
 
 // ==========================================
 // Verify Mobile OTP Service
@@ -123,6 +139,99 @@ export const resendMobileOTPService = async (data) => {
 };
 
 // ==========================================
+// Verify Email OTP Service
+// ==========================================
+
+export const verifyEmailOTPService = async (data) => {
+  const { email, otp } = data;
+
+  if (!email || !otp) {
+    const error = new Error("Email and OTP are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const student = await Student.findOne({ email });
+
+  if (!student) {
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (student.isEmailVerified) {
+    const error = new Error("Email already verified.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!student.emailVerificationOTP || student.emailVerificationOTP !== otp) {
+    const error = new Error("Invalid OTP.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (new Date() > student.emailVerificationOTPExpires) {
+    const error = new Error("OTP has expired.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  student.isEmailVerified = true;
+  student.emailVerificationOTP = undefined;
+  student.emailVerificationOTPExpires = undefined;
+
+  await student.save();
+
+  return {
+    id: student._id,
+    fullName: student.fullName,
+    email: student.email,
+    isEmailVerified: student.isEmailVerified,
+  };
+};
+
+// ==========================================
+// Resend Email OTP Service
+// ==========================================
+
+export const resendEmailOTPService = async (data) => {
+  const { email } = data;
+
+  if (!email) {
+    const error = new Error("Email is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const student = await Student.findOne({ email });
+
+  if (!student) {
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (student.isEmailVerified) {
+    const error = new Error("Email already verified.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const emailOTP = generateOTP();
+  const emailOTPExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  student.emailVerificationOTP = emailOTP;
+  student.emailVerificationOTPExpires = emailOTPExpires;
+
+  await student.save();
+
+  await sendEmailOTP(student.email, emailOTP);
+
+  return true;
+};
+
+// ==========================================
 // LOGIN Student Service
 // ==========================================
 
@@ -164,6 +273,16 @@ export const loginStudentService = async (data) => {
   }
 
   // ==========================================
+  // Email Verification
+  // ==========================================
+
+  if (!student.isEmailVerified) {
+    const error = new Error("Please verify your email address first.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // ==========================================
   // Account Status
   // ==========================================
 
@@ -195,7 +314,7 @@ export const loginStudentService = async (data) => {
   // Generate Tokens
   // ==========================================
 
-  const accessToken = generateAccessToken(student._id);
+  const accessToken = generateAccessToken(student);
   const refreshToken = generateRefreshToken(student._id);
 
   // ==========================================
@@ -235,7 +354,10 @@ export const getMyProfileService = async (studentId) => {
     throw error;
   }
 
-  const student = await Student.findById(studentId);
+  const student = await Student.findById(studentId)
+    .populate("selectedBatch")
+    .populate("enrolledCourses.course")
+    .populate("enrolledBatches.batch")
 
   if (!student) {
     const error = new Error("Student not found.");
@@ -269,13 +391,41 @@ export const updateProfileService = async (studentId, data) => {
 
   if (fullName) student.fullName = fullName;
   if (gender) student.gender = gender;
-  if (selectedBatch) student.selectedBatch = selectedBatch;
+
+  if (
+    selectedBatch &&
+    selectedBatch.toString() !== student.selectedBatch.toString()
+  ) {
+    const newBatch = await Batch.findById(selectedBatch);
+    if (!newBatch) {
+      const error = new Error("New selected batch does not exist.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Decrement count from old batch
+    if (student.selectedBatch) {
+      await Batch.findByIdAndUpdate(student.selectedBatch, {
+        $inc: { totalStudents: -1 },
+      });
+    }
+
+    // Increment count in new batch
+    newBatch.totalStudents = (newBatch.totalStudents || 0) + 1;
+    await newBatch.save();
+
+    student.selectedBatch = selectedBatch;
+  }
+
   if (deviceToken) student.deviceToken = deviceToken;
   if (deviceType) student.deviceType = deviceType;
 
   await student.save();
 
-  return student;
+  return Student.findById(studentId)
+    .populate("selectedBatch")
+    .populate("enrolledCourses.course")
+    .populate("enrolledBatches.batch");
 };
 
 // ==========================================
@@ -299,6 +449,9 @@ export const logoutStudentService = async (studentId) => {
 
   // Clear Refresh Token
   student.refreshToken = "";
+
+  // Invalidate any outstanding Access Tokens immediately
+  student.tokenVersion = (student.tokenVersion || 0) + 1;
 
   // Optional: Clear Device Token
   // student.deviceToken = "";
@@ -367,8 +520,223 @@ export const confirmDeleteAccountService = async (studentId, otp) => {
     throw error;
   }
 
+  // Decrement totalStudents count in their selected batch
+  if (student.selectedBatch) {
+    await Batch.findByIdAndUpdate(student.selectedBatch, {
+      $inc: { totalStudents: -1 },
+    });
+  }
+
+  // Decrement totalStudents count in all enrolled batches
+  if (student.enrolledBatches && student.enrolledBatches.length > 0) {
+    const batchIds = student.enrolledBatches.map((b) => b.batch);
+    await Batch.updateMany(
+      { _id: { $in: batchIds } },
+      { $inc: { totalStudents: -1 } },
+    );
+  }
+
   // Hard Delete Account
   await Student.findByIdAndDelete(studentId);
 
   return true;
+};
+
+// ==========================================
+// ENROLL STUDENT SERVICE
+// ==========================================
+
+export const enrollStudentService = async (studentId, data) => {
+  const { type, id, paymentId, amountPaid } = data;
+
+  if (!type || !id) {
+    const error = new Error(
+      "Enrollment type ('course' or 'batch') and target ID are required.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Payment check
+  if (!paymentId || amountPaid === undefined || Number(amountPaid) < 0) {
+    const error = new Error(
+      "Valid payment details (paymentId, amountPaid) are required for enrollment.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const student = await Student.findById(studentId);
+  if (!student) {
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (type === "course") {
+    const course = await Course.findById(id);
+    if (!course || !course.isActive) {
+      const error = new Error("Course not found or inactive.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Check if student is already enrolled in the course
+    const isEnrolled = student.enrolledCourses.some(
+      (item) => item.course.toString() === course._id.toString(),
+    );
+
+    if (isEnrolled) {
+      const error = new Error("Already enrolled in this course.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    student.enrolledCourses.push({
+      course: course._id,
+      enrolledAt: new Date(),
+      paymentId,
+      amountPaid,
+      paymentStatus: "Completed",
+    });
+  } else if (type === "batch") {
+    const batch = await Batch.findById(id);
+    if (!batch || !batch.isActive) {
+      const error = new Error("Batch not found or inactive.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Check if student is already enrolled in the batch
+    const isEnrolledInBatch = student.enrolledBatches.some(
+      (item) => item.batch.toString() === batch._id.toString(),
+    );
+
+    if (isEnrolledInBatch) {
+      const error = new Error("Already enrolled in this batch.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    student.enrolledBatches.push({
+      batch: batch._id,
+      enrolledAt: new Date(),
+      paymentId,
+      amountPaid,
+      paymentStatus: "Completed",
+    });
+
+    // Find all active courses of this batch
+    const courses = await Course.find({ batch: batch._id, isActive: true });
+
+    // Add each course to enrolledCourses if not already present
+    for (const course of courses) {
+      const isAlreadyEnrolled = student.enrolledCourses.some(
+        (item) => item.course.toString() === course._id.toString(),
+      );
+
+      if (!isAlreadyEnrolled) {
+        student.enrolledCourses.push({
+          course: course._id,
+          enrolledAt: new Date(),
+          paymentId,
+          amountPaid: 0, // Individual course paid via batch enrollment
+          paymentStatus: "Completed",
+        });
+      }
+    }
+
+    // Increment totalStudents count for the enrolled batch
+    batch.totalStudents = (batch.totalStudents || 0) + 1;
+    await batch.save();
+  } else {
+    const error = new Error(
+      "Invalid enrollment type. Must be 'course' or 'batch'.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await student.save();
+
+  return Student.findById(studentId)
+    .populate("selectedBatch")
+    .populate("enrolledCourses.course")
+    .populate("enrolledBatches.batch");
+};
+
+// ==========================================
+// REFRESH ACCESS TOKEN SERVICE
+// ==========================================
+
+export const refreshAccessTokenService = async (incomingRefreshToken) => {
+  // If no refresh token found then login again
+  if (!incomingRefreshToken) {
+    const error = new Error("Refresh token is missing. Please login again.");
+    error.statusCode = 401;
+    error.code = "SESSION_EXPIRED";
+    throw error;
+  }
+
+  // ------------------------------------------
+  // Verify Refresh Token Signature & Expiry
+  // This is the check that decides everything:
+  // - expired REFRESH_TOKEN_EXPIRE (30d) → throws here
+  // - tampered/invalid signature       → throws here
+  // ------------------------------------------
+
+  let decoded;
+  try {
+    decoded = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET,
+    );
+  } catch (err) {
+    const error = new Error("Session expired. Please login again.");
+    error.statusCode = 401;
+    error.code = "SESSION_EXPIRED";
+    throw error;
+  }
+
+  // ------------------------------------------
+  // Find Student
+  // (refreshToken field has select:false, so pull it explicitly)
+  // ------------------------------------------
+
+  const student = await Student.findById(decoded.id).select("+refreshToken");
+  if (!student) {
+    const error = new Error("Student not found. Please login again.");
+    error.statusCode = 401;
+    error.code = "SESSION_EXPIRED";
+    throw error;
+  }
+
+  if (student.isBlocked || !student.isActive) {
+    const error = new Error("Account is blocked or inactive.");
+    error.statusCode = 403;
+    error.code = "ACCOUNT_BLOCKED";
+    throw error;
+  }
+
+  // ------------------------------------------
+  // Confirm this refresh token is the one we
+  // actually issued (e.g. student logged out on
+  // this device already → refreshToken was cleared)
+  // ------------------------------------------
+  if (!student.refreshToken || student.refreshToken !== incomingRefreshToken) {
+    const error = new Error("Session expired. Please login again.");
+    error.statusCode = 401;
+    error.code = "SESSION_EXPIRED";
+    throw error;
+  }
+
+  // ------------------------------------------
+  // Everything checks out → issue a fresh
+  // Access Token only. Refresh Token is left
+  // untouched so it keeps counting down its
+  // own 30d lifespan.
+  // ------------------------------------------
+  const newAccessToken = generateAccessToken(student);
+
+  return { accessToken: newAccessToken };
 };

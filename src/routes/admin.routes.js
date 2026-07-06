@@ -76,4 +76,5 @@ router.patch("/managers/:id/block", protect, toggleBlockManager);
 // Protect
 router.delete("/managers/:id", protect, deleteManager);
 
+
 export default router;

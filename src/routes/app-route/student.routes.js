@@ -10,9 +10,14 @@ import {
   updateProfile,
   verifyMobileOTP,
   enrollStudent,
-  refreshAccessToken
+  refreshAccessToken,
+  verifyEmailOTP,
+  resendEmailOTP
 } from "../../controllers/appController/student.controller.js";
 import { isAuthenticated } from "../../middleware/isAuthenticated.js";
+import { validate } from "../../middleware/validate.middleware.js";
+import { studentUpdateProfile } from "../../validations/student.validation.js";
+
 
 const router = express.Router();
 
@@ -23,6 +28,8 @@ const router = express.Router();
 router.post("/register", registerStudent);
 router.post("/verify-mobile-otp", verifyMobileOTP);
 router.post("/resend-mobile-otp", resendMobileOTP);
+router.post("/verify-email-otp", verifyEmailOTP);
+router.post("/resend-email-otp", resendEmailOTP);
 router.post("/login", loginStudent);
 
 // ==========================================
@@ -34,7 +41,7 @@ router.get("/profile", isAuthenticated, getMyProfile);
 // Update Profile
 // ==========================================
 
-router.put("/profile", isAuthenticated, updateProfile);
+router.put("/profile", isAuthenticated, validate({ body: studentUpdateProfile }), updateProfile);
 
 // ==========================================
 // LogOut Profile

@@ -29,3 +29,26 @@ export const studentRegister = z.object({
     message: "You must accept terms and conditions",
   }),
 });
+
+export const studentUpdateProfile = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(3, "Name must be at least 3 characters")
+    .max(60, "Name must be less than 60 characters")
+    .regex(/^[A-Za-z\s]+$/, "Name should contain only letters")
+    .optional(),
+
+  gender: z.enum(["Male", "Female", "Other"]).optional(),
+
+  classNumber: z
+    .number()
+    .int("Class must be an integer")
+    .min(6, "Class must be at least 6")
+    .max(10, "Class must be at most 10")
+    .optional(),
+
+  deviceToken: z.string().trim().optional(),
+  deviceType: z.string().trim().optional(),
+});
+

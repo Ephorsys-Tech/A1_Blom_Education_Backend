@@ -6,19 +6,28 @@ import { generateOTP } from "../utils/generateOTP.js";
 import { generateRefreshToken } from "../utils/generateRefreshToken.js";
 import { sendOTP } from "../utils/sendOTP.js";
 import { verifyOTP } from "../utils/verifyOTP.js";
+import { sendEmailOTP } from "../utils/sendEmailOTP.js";
+import { sendCongratulationMail } from "../utils/sendCongratulationMail.js";
 import jwt from "jsonwebtoken";
 
 // ==========================================
 // Register Student Service
 // ==========================================
   export const registerStudentService = async (data) => {
-    const { fullName, email,mobile, password, classNumber , gender, acceptedTerms } = data;
+    const { fullName, email, mobile, password, classNumber, gender, acceptedTerms } = data;
 
     const mobileExists = await Student.findOne({ mobile });
-
     if (mobileExists) {
       throw new Error("Mobile number already registered.");
     }
+
+    const emailExists = await Student.findOne({ email });
+    if (emailExists) {
+      throw new Error("Email address already registered.");
+    }
+
+    const emailOTP = generateOTP();
+    const emailOTPExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     const student = await Student.create({
       fullName,
@@ -29,9 +38,20 @@ import jwt from "jsonwebtoken";
       gender,
       acceptedTerms,
       acceptedTermsAt: new Date(),
+      emailVerificationOTP: emailOTP,
+      emailVerificationOTPExpires: emailOTPExpires,
     });
 
+    // Send mobile and email OTPs
     await sendOTP(student.mobile);
+    await sendEmailOTP(student.email, emailOTP);
+
+    // Send Congratulation/Welcome email
+    try {
+      await sendCongratulationMail(student.email, student.fullName, { mobile, classNumber });
+    } catch (err) {
+      console.error("Failed to send congratulation email:", err);
+    }
 
     return {
       id: student._id,
@@ -39,6 +59,7 @@ import jwt from "jsonwebtoken";
       mobile: student.mobile,
       email: student.email,
       isMobileVerified: student.isMobileVerified,
+      isEmailVerified: student.isEmailVerified,
     };
   };
 
@@ -118,6 +139,99 @@ export const resendMobileOTPService = async (data) => {
 };
 
 // ==========================================
+// Verify Email OTP Service
+// ==========================================
+
+export const verifyEmailOTPService = async (data) => {
+  const { email, otp } = data;
+
+  if (!email || !otp) {
+    const error = new Error("Email and OTP are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const student = await Student.findOne({ email });
+
+  if (!student) {
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (student.isEmailVerified) {
+    const error = new Error("Email already verified.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!student.emailVerificationOTP || student.emailVerificationOTP !== otp) {
+    const error = new Error("Invalid OTP.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (new Date() > student.emailVerificationOTPExpires) {
+    const error = new Error("OTP has expired.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  student.isEmailVerified = true;
+  student.emailVerificationOTP = undefined;
+  student.emailVerificationOTPExpires = undefined;
+
+  await student.save();
+
+  return {
+    id: student._id,
+    fullName: student.fullName,
+    email: student.email,
+    isEmailVerified: student.isEmailVerified,
+  };
+};
+
+// ==========================================
+// Resend Email OTP Service
+// ==========================================
+
+export const resendEmailOTPService = async (data) => {
+  const { email } = data;
+
+  if (!email) {
+    const error = new Error("Email is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const student = await Student.findOne({ email });
+
+  if (!student) {
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (student.isEmailVerified) {
+    const error = new Error("Email already verified.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const emailOTP = generateOTP();
+  const emailOTPExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  student.emailVerificationOTP = emailOTP;
+  student.emailVerificationOTPExpires = emailOTPExpires;
+
+  await student.save();
+
+  await sendEmailOTP(student.email, emailOTP);
+
+  return true;
+};
+
+// ==========================================
 // LOGIN Student Service
 // ==========================================
 
@@ -154,6 +268,16 @@ export const loginStudentService = async (data) => {
 
   if (!student.isMobileVerified) {
     const error = new Error("Please verify your mobile number first.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // ==========================================
+  // Email Verification
+  // ==========================================
+
+  if (!student.isEmailVerified) {
+    const error = new Error("Please verify your email address first.");
     error.statusCode = 403;
     throw error;
   }
@@ -263,18 +387,15 @@ export const updateProfileService = async (studentId, data) => {
     throw error;
   }
 
-  const { fullName, gender, selectedBatch, deviceToken, deviceType } = data;
+  const { fullName, gender, classNumber, deviceToken, deviceType } = data;
 
   if (fullName) student.fullName = fullName;
   if (gender) student.gender = gender;
 
-  if (
-    selectedBatch &&
-    selectedBatch.toString() !== student.selectedBatch.toString()
-  ) {
-    const newBatch = await Batch.findById(selectedBatch);
+  if (classNumber && classNumber !== student.classNumber) {
+    const newBatch = await Batch.findOne({ classNumber });
     if (!newBatch) {
-      const error = new Error("New selected batch does not exist.");
+      const error = new Error(`Batch for Class ${classNumber} does not exist.`);
       error.statusCode = 404;
       throw error;
     }
@@ -290,7 +411,8 @@ export const updateProfileService = async (studentId, data) => {
     newBatch.totalStudents = (newBatch.totalStudents || 0) + 1;
     await newBatch.save();
 
-    student.selectedBatch = selectedBatch;
+    student.classNumber = classNumber;
+    student.selectedBatch = newBatch._id;
   }
 
   if (deviceToken) student.deviceToken = deviceToken;

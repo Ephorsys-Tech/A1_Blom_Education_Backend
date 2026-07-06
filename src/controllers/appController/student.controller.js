@@ -10,7 +10,9 @@ import {
   updateProfileService,
   verifyMobileOTPService,
   enrollStudentService,
-  refreshAccessTokenService
+  refreshAccessTokenService,
+  verifyEmailOTPService,
+  resendEmailOTPService
 } from "../../services/student.service.js";
 import { studentRegister } from "../../validations/student.validation.js";
 
@@ -28,8 +30,6 @@ export const registerStudent = async (req, res, next) => {
       });
     }
 
-    console.log("Zod Result" ,result)
-    console.log("Zod Result data" ,result.data)
 
     const student = await registerStudentService(result.data);
 
@@ -53,7 +53,7 @@ export const verifyMobileOTP = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Mobile verified successfully.",
-      result,
+      result, 
     });
   } catch (error) {
     next(error);
@@ -66,6 +66,35 @@ export const verifyMobileOTP = async (req, res, next) => {
 export const resendMobileOTP = async (req, res, next) => {
   try {
     await resendMobileOTPService(req.body);
+    return respond(res, 200, "OTP sent successfully.");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ==========================================
+// Verify Email OTP
+// ==========================================
+export const verifyEmailOTP = async (req, res, next) => {
+  try {
+    const result = await verifyEmailOTPService(req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully.",
+      result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ==========================================
+// Resend Email OTP
+// ==========================================
+export const resendEmailOTP = async (req, res, next) => {
+  try {
+    await resendEmailOTPService(req.body);
     return respond(res, 200, "OTP sent successfully.");
   } catch (error) {
     next(error);

@@ -7,6 +7,7 @@ import contactRoutes from "./web-route/contact.routes.js";
 import reelRoutes from "./web-route/reel.routes.js";
 import announcementRoutes from "./web-route/announcement.routes.js";
 import careerRoutes from "./web-route/career.routes.js";
+import academicRoutes from "./web-route/academic.routes.js";
 import studentRoutes from "./app-route/student.routes.js";
 import batchRoutes from "./app-route/batch.route.js";
 import courseRoutes from "./app-route/course.routes.js";
@@ -56,6 +57,11 @@ router.use("/announcements", announcementRoutes);
 router.use("/careers", careerRoutes);
 
 // ========================================
+// Academic Routes
+// ========================================
+router.use("/academic", academicRoutes);
+
+// ========================================
 // Student Routes
 // ========================================
 router.use("/student", studentRoutes);
@@ -79,5 +85,8 @@ router.use("/chapters", chapterRoutes);
 // Lecture Routes
 // ========================================
 router.use("/lectures", lectureRoutes);
+
+
+
 
 export default router;

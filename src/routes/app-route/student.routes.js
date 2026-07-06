@@ -10,7 +10,9 @@ import {
   updateProfile,
   verifyMobileOTP,
   enrollStudent,
-  refreshAccessToken
+  refreshAccessToken,
+  verifyEmailOTP,
+  resendEmailOTP
 } from "../../controllers/appController/student.controller.js";
 import { isAuthenticated } from "../../middleware/isAuthenticated.js";
 
@@ -23,6 +25,8 @@ const router = express.Router();
 router.post("/register", registerStudent);
 router.post("/verify-mobile-otp", verifyMobileOTP);
 router.post("/resend-mobile-otp", resendMobileOTP);
+router.post("/verify-email-otp", verifyEmailOTP);
+router.post("/resend-email-otp", resendEmailOTP);
 router.post("/login", loginStudent);
 
 // ==========================================

@@ -98,6 +98,19 @@ const studentSchema = new mongoose.Schema(
       default: false,
     },
 
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerificationOTP: {
+      type: String,
+    },
+
+    emailVerificationOTPExpires: {
+      type: Date,
+    },
+
     // ==========================================
     // AUTH TOKENS
     // ==========================================

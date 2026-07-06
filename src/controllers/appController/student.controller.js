@@ -12,13 +12,26 @@ import {
   enrollStudentService,
   refreshAccessTokenService
 } from "../../services/student.service.js";
+import { studentRegister } from "../../validations/student.validation.js";
 
 // ==========================================
 // Register Student
 // ==========================================
 export const registerStudent = async (req, res, next) => {
   try {
-    const student = await registerStudentService(req.body);
+    const result = studentRegister.safeParse(req.body)
+        if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.format(),
+      });
+    }
+
+    console.log("Zod Result" ,result)
+    console.log("Zod Result data" ,result.data)
+
+    const student = await registerStudentService(result.data);
 
     return res.status(201).json({
       success: true,

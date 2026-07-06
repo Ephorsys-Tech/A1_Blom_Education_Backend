@@ -11,54 +11,36 @@ import jwt from "jsonwebtoken";
 // ==========================================
 // Register Student Service
 // ==========================================
-export const registerStudentService = async (data) => {
-  const { fullName, mobile, password, gender, selectedBatch, acceptedTerms } =
-    data;
+  export const registerStudentService = async (data) => {
+    const { fullName, email,mobile, password, classNumber , gender, acceptedTerms } = data;
 
-  if (!fullName || !mobile || !password || !gender || !selectedBatch) {
-    throw new Error("All fields are required.");
-  }
+    const mobileExists = await Student.findOne({ mobile });
 
-  if (!acceptedTerms) {
-    throw new Error("Please accept Terms & Conditions.");
-  }
+    if (mobileExists) {
+      throw new Error("Mobile number already registered.");
+    }
 
-  // Verify batch exists
-  const targetBatch = await Batch.findById(selectedBatch);
-  if (!targetBatch) {
-    throw new Error("Selected Batch does not exist.");
-  }
+    const student = await Student.create({
+      fullName,
+      email,
+      mobile,
+      password,
+      classNumber,
+      gender,
+      acceptedTerms,
+      acceptedTermsAt: new Date(),
+    });
 
-  const mobileExists = await Student.findOne({ mobile });
+    await sendOTP(student.mobile);
 
-  if (mobileExists) {
-    throw new Error("Mobile number already registered.");
-  }
-
-  const student = await Student.create({
-    fullName,
-    mobile,
-    password,
-    gender,
-    selectedBatch,
-    acceptedTerms,
-    acceptedTermsAt: new Date(),
-  });
-
-  // Increment totalStudents in the selected batch
-  targetBatch.totalStudents = (targetBatch.totalStudents || 0) + 1;
-  await targetBatch.save();
-
-  await sendOTP(student.mobile);
-
-  return {
-    id: student._id,
-    fullName: student.fullName,
-    mobile: student.mobile,
-    selectedBatch: student.selectedBatch,
-    isMobileVerified: student.isMobileVerified,
+    return {
+      id: student._id,
+      fullName: student.fullName,
+      mobile: student.mobile,
+      email: student.email,
+      isMobileVerified: student.isMobileVerified,
+    };
   };
-};
 
 // ==========================================
 // Verify Mobile OTP Service
@@ -251,7 +233,7 @@ export const getMyProfileService = async (studentId) => {
   const student = await Student.findById(studentId)
     .populate("selectedBatch")
     .populate("enrolledCourses.course")
-    .populate("enrolledBatches.batch");
+    .populate("enrolledBatches.batch")
 
   if (!student) {
     const error = new Error("Student not found.");

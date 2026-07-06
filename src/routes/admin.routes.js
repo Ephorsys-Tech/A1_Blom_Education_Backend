@@ -82,5 +82,6 @@ router.patch("/managers/:id/block", protect, validate({ params: paramIdSchema })
 // Protect
 router.delete("/managers/:id", protect, validate({ params: paramIdSchema }), deleteManager);
 
+
 export default router;
 

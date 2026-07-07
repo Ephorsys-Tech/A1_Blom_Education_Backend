@@ -1,5 +1,7 @@
 import {
   registerAdminService,
+  verifyAdminEmailService,
+  resendAdminOtpService,
   loginAdminService,
   logoutAdminService,
   refreshAdminTokenService,
@@ -23,8 +25,45 @@ export const registerAdmin = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: "Admin Registered Successfully",
+      message: "Admin Registered Successfully. OTP sent to your email for verification.",
       data: adminData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//-------------------------------------------------------
+//@description - Verify Admin Email OTP
+//@route - POST /api/v1/admin/verify-email
+//@access Public
+//-------------------------------------------------------
+export const verifyAdminEmail = async (req, res, next) => {
+  try {
+    const adminData = await verifyAdminEmailService(req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully.",
+      data: adminData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//-------------------------------------------------------
+//@description - Resend Admin Registration OTP
+//@route - POST /api/v1/admin/resend-otp
+//@access Public
+//-------------------------------------------------------
+export const resendAdminOtp = async (req, res, next) => {
+  try {
+    await resendAdminOtpService(req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP resent successfully.",
     });
   } catch (error) {
     next(error);

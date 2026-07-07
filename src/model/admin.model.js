@@ -42,17 +42,40 @@ const adminSchema = new mongoose.Schema(
     },
 
     // ======================================
+    // EMAIL VERIFICATION (Registration)
+    // ======================================
+
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerificationOtp: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    emailVerificationOtpExpire: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    // ======================================
     // FORGOT PASSWORD OTP
     // ======================================
 
     resetOtp: {
       type: String,
       default: null,
+      select: false,
     },
 
     resetOtpExpire: {
       type: Date,
       default: null,
+      select: false,
     },
 
     // ======================================

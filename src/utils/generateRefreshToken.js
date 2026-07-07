@@ -11,3 +11,15 @@ export const generateRefreshToken = (studentId) => {
     },
   );
 };
+
+export const generateAdminRefreshToken = (adminId) => {
+  return jwt.sign(
+    {
+      id: adminId,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: "1d",
+    },
+  );
+};

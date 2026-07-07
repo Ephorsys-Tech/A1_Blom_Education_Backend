@@ -1,203 +1,152 @@
-// import { sendMail } from "../config/sendMail.js";
-import { sendMail } from "../utils/sendMail.js";
-import { managerAccessTemplate } from "../utils/mailTemplates/managerAccessTemplate.js";
-import AdminModel from "../model/admin.model.js";
-import generateToken from "../utils/generateToken.js";
-// -----------------------------------------------------
-// @description -   Register Admin
-// @route -   POST /api/v1/admin/register
-// @access -  Public
-// -----------------------------------------------------
+import {
+  registerAdminService,
+  loginAdminService,
+  logoutAdminService,
+  refreshAdminTokenService,
+  getAdminProfileService,
+  forgotPasswordService,
+  resetPasswordService,
+  giveAccessService,
+  getAllManagersService,
+  toggleBlockManagerService,
+  deleteManagerService
+} from "../services/admin.service.js";
 
-export const registerAdmin = async (req, res) => {
+//-------------------------------------------------------
+//@description - Register Admin
+//@route - POST /api/v1/admin/register
+//@access Public
+//-------------------------------------------------------
+export const registerAdmin = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const adminData = await registerAdminService(req.body);
 
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "All Feilds are Required",
-      });
-    }
-
-    // --------------------------------------------
-    // Check Existing Admin
-    // --------------------------------------------
-    const existingAdmin = await AdminModel.findOne({ email });
-    if (existingAdmin) {
-      return res.status(409).json({
-        success: false,
-        message: "Admin Already Exists",
-      });
-    }
-
-    
-    // --------------------------------------------
-    // Create Admin
-    // --------------------------------------------
-    const admin = await AdminModel.create({
-      name,
-      email,
-      password,
-    });
-
-    //---------------------------------------------
-    // Remove Password from Response
-    //---------------------------------------------
-    const adminData = await AdminModel.findById(admin._id).select("-password");
-
-    //---------------------------------------------
-    // Final Response
-    //----------------------------------------------
     return res.status(201).json({
       success: true,
       message: "Admin Registered Successfully",
       data: adminData,
     });
   } catch (error) {
-    console.error("Register Admin Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 //-------------------------------------------------------
 //@description - Login Admin
-//@route - POST  /api/v1/admin/login
+//@route - POST /api/v1/admin/login
 //@access Public
 //-------------------------------------------------------
-
-export const loginAdmin = async (req, res) => {
+export const loginAdmin = async (req, res, next) => {
   try {
-    // --------------------------------------------
-    // Get Email & Password
-    // --------------------------------------------
-    const { email, password } = req.body;
+    const result = await loginAdminService(req.body);
 
-    // --------------------------------------------
-    // Validation
-    // --------------------------------------------
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and Password are Required",
-      });
-    }
-
-    // --------------------------------------------
-    // Find Admin already exist or Not (by Email or UserId)
-    // --------------------------------------------
-    const admin = await AdminModel.findOne({ 
-      $or: [{ email: email }, { userId: email }] 
-    });
-    
-    if (!admin) {
-      return res.status(404).json({
-        success: false,
-        message: "Admin or Manager Not Found",
-      });
-    }
-
-    if (admin.isBlocked) {
-      return res.status(403).json({
-        success: false,
-        message: "Account is blocked. Please contact the main admin.",
-      });
-    }
-
-    // ---------------------------------------------
-    // Compare Password
-    // ----------------------------------------------
-    const isPasswordMatched = await admin.comparePassword(password);
-
-    if (!isPasswordMatched) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid Credentials",
-      });
-    }
-
-    // ---------------------------------------------
-    // Generate Token
-    // ----------------------------------------------
-    const token = generateToken(admin._id);
-
-    // ---------------------------------------------
-    // Cookie Options
-    // ----------------------------------------------
-    const cookieOption = {
+    // Cookie Options for Access Token (10m)
+    const accessCookieOption = {
       httpOnly: true,
       secure: false, // true in production
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 10 * 60 * 1000,
     };
 
-    // ---------------------------------------------
-    // Store Token in Cookie
-    // ----------------------------------------------
-    res.cookie("token", token, cookieOption);
+    // Cookie Options for Refresh Token (1d)
+    const refreshCookieOption = {
+      httpOnly: true,
+      secure: false, // true in production
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    };
 
-    // ---------------------------------------------
-    // Login Response
-    // ----------------------------------------------
+    // Set cookies
+    res.cookie("accessToken", result.accessToken, accessCookieOption);
+    res.cookie("refreshToken", result.refreshToken, refreshCookieOption);
+
     return res.status(200).json({
       success: true,
       message: "Login Successful",
-      data: {
-        _id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-      },
+      data: result.admin,
     });
   } catch (error) {
-    console.error("Login Admin Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 //-------------------------------------------------------
 //@description - Logout Admin
-//@route - POST  /api/v1/admin/logout
+//@route - POST /api/v1/admin/logout
 //@access Private
 //-------------------------------------------------------
-
-export const LogoutAdmin = async (req, res) => {
+export const LogoutAdmin = async (req, res, next) => {
   try {
-    // ------------------------------------------
-    // Clear Auth Cookie
-    // ------------------------------------------
+    let token = req.cookies.accessToken || req.cookies.token;
+    const authHeader = req.headers.authorization;
+    if (!token && authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
 
-    res.clearCookie("token", {
+    await logoutAdminService(token);
+
+    // Clear Auth Cookies
+    const cookieOptions = {
       httpOnly: true,
       sameSite: "lax",
-      secure: false, // true in production
-    });
-
-    // ------------------------------------------
-    // Success Response
-    // ------------------------------------------
+      secure: false,
+    };
+    res.clearCookie("token", cookieOptions);
+    res.clearCookie("accessToken", cookieOptions);
+    res.clearCookie("refreshToken", cookieOptions);
 
     return res.status(200).json({
       success: true,
       message: "Logout Successful",
     });
   } catch (error) {
-    console.error("Logout Error:", error);
+    next(error);
+  }
+};
 
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
+//-------------------------------------------------------
+//@description - Refresh Admin Token
+//@route - POST /api/v1/admin/refresh-token
+//@access Public
+//-------------------------------------------------------
+export const refreshAdminToken = async (req, res, next) => {
+  try {
+    const incomingRefreshToken = req.body.refreshToken || req.cookies.refreshToken;
+
+    const result = await refreshAdminTokenService(incomingRefreshToken);
+
+    // Cookie Options for Access Token (10m)
+    const accessCookieOption = {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 10 * 60 * 1000,
+    };
+
+    // Cookie Options for Refresh Token (1d)
+    const refreshCookieOption = {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    };
+
+    res.cookie("accessToken", result.accessToken, accessCookieOption);
+    res.cookie("refreshToken", result.refreshToken, refreshCookieOption);
+
+    return res.status(200).json({
+      success: true,
+      message: "Access token refreshed successfully.",
     });
+  } catch (error) {
+    if (error.code === "INVALID_REFRESH_TOKEN") {
+      return res.status(error.statusCode || 401).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+      });
+    }
+    next(error);
   }
 };
 
@@ -206,357 +155,125 @@ export const LogoutAdmin = async (req, res) => {
 //@route - GET /api/v1/admin/profile
 //@access Private
 //-------------------------------------------------------
-
-export const getAdminProfile = async (req, res) => {
+export const getAdminProfile = async (req, res, next) => {
   try {
-    // --------------------------------------------
-    // Find Admin already exist or Not
-    // --------------------------------------------
-    const admin = await AdminModel.findById(req.admin._id).select("-password");
-    if (!admin) {
-      return res.status(404).json({
-        success: false,
-        message: "Admin Not Found",
-      });
-    }
+    const admin = await getAdminProfileService(req.admin._id);
 
-    // ------------------------------------------
-    // Success Response
-    // ------------------------------------------
     return res.status(200).json({
       success: true,
       data: admin,
     });
   } catch (error) {
-    console.error("Profile Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-// ======================================================
-// FORGOT PASSWORD - SEND OTP
-// ======================================================
-
-export const forgotPassword = async (req, res) => {
+//-------------------------------------------------------
+//@description - Forgot Password
+//@route - POST /api/v1/admin/forgot-password
+//@access Public
+//-------------------------------------------------------
+export const forgotPassword = async (req, res, next) => {
   try {
-    const { email } = req.body;
-
-    // ==========================================
-    // VALIDATION
-    // ==========================================
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is required",
-      });
-    }
-
-    // ==========================================
-    // FIND ADMIN
-    // ==========================================
-
-    const admin = await AdminModel.findOne({ email });
-
-    if (!admin) {
-      return res.status(404).json({
-        success: false,
-        message: "Admin not found",
-      });
-    }
-
-    // ==========================================
-    // GENERATE OTP
-    // ==========================================
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    admin.resetOtp = otp;
-
-    admin.resetOtpExpire = Date.now() + 10 * 60 * 1000;
-
-    await admin.save();
-
-    // ==========================================
-    // SEND MAIL
-    // ==========================================
-
-    // await sendMail(
-    //   admin.email,
-    //   "Password Reset OTP",
-    //   `
-    //   <div style="font-family: Arial, sans-serif;">
-    //     <h2>Password Reset Request</h2>
-
-    //     <p>Hello ${admin.name},</p>
-
-    //     <p>Your OTP for password reset is:</p>
-
-    //     <h1 style="color:#2563eb">${otp}</h1>
-
-    //     <p>This OTP is valid for 10 minutes.</p>
-
-    //     <p>If you didn't request this, ignore this email.</p>
-    //   </div>
-    //   `,
-    // );
-
-    // ==========================================
-    // RESPONSE
-    // ==========================================
+    await forgotPasswordService(req.body.email);
 
     return res.status(200).json({
       success: true,
       message: "OTP sent successfully",
     });
   } catch (error) {
-    console.log("FORGOT PASSWORD ERROR :", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-// ======================================================
-// RESET PASSWORD
-// ======================================================
-
-export const resetPassword = async (req, res) => {
+//-------------------------------------------------------
+//@description - Reset Password
+//@route - POST /api/v1/admin/reset-password
+//@access Public
+//-------------------------------------------------------
+export const resetPassword = async (req, res, next) => {
   try {
-    const { email, otp, password, confirmPassword } = req.body;
-
-    // ==========================================
-    // VALIDATION
-    // ==========================================
-
-    if (!email || !otp || !password || !confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Password and Confirm Password must match",
-      });
-    }
-
-    // ==========================================
-    // FIND ADMIN
-    // ==========================================
-
-    const admin = await AdminModel.findOne({
-      email,
-    });
-
-    if (!admin) {
-      return res.status(404).json({
-        success: false,
-        message: "Admin not found",
-      });
-    }
-
-    // ==========================================
-    // CHECK OTP
-    // ==========================================
-
-    if (admin.resetOtp !== otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
-      });
-    }
-
-    // ==========================================
-    // CHECK OTP EXPIRY
-    // ==========================================
-
-    if (!admin.resetOtpExpire || admin.resetOtpExpire < Date.now()) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP expired",
-      });
-    }
-
-    // ==========================================
-    // UPDATE PASSWORD
-    // ==========================================
-
-    admin.password = password;
-
-    admin.resetOtp = undefined;
-
-    admin.resetOtpExpire = undefined;
-
-    await admin.save();
-
-    // ==========================================
-    // RESPONSE
-    // ==========================================
+    await resetPasswordService(req.body);
 
     return res.status(200).json({
       success: true,
       message: "Password reset successfully",
     });
   } catch (error) {
-    console.log("RESET PASSWORD ERROR :", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-// ======================================================
-// GIVE ACCESS (CREATE MANAGERS)
-// ======================================================
-
-export const giveAccess = async (req, res) => {
+//-------------------------------------------------------
+//@description - Give Access (Create Managers)
+//@route - POST /api/v1/admin/give-access
+//@access Private
+//-------------------------------------------------------
+export const giveAccess = async (req, res, next) => {
   try {
-    // ------------------------------------------
-    // Check if requester is Admin
-    // ------------------------------------------
-    if (req.admin.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Access Denied: Only Admin can perform this action",
-      });
-    }
+    const managerData = await giveAccessService(req.admin.role, req.body);
 
-    const { name, email, password, role, userId } = req.body;
-
-    // ------------------------------------------
-    // Validation
-    // ------------------------------------------
-    if (!name || !email || !password || !role || !userId) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required (name, email, password, role, userId)",
-      });
-    }
-
-    const validRoles = ["web-manager", "app-manager"];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid role. Must be 'web-manager' or 'app-manager'",
-      });
-    }
-
-    // ------------------------------------------
-    // Check Existing User
-    // ------------------------------------------
-    const existingUser = await AdminModel.findOne({ 
-      $or: [{ email: email }, { userId: userId }] 
-    });
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "User with this email or User ID already exists",
-      });
-    }
-
-    // ------------------------------------------
-    // Create Manager
-    // ------------------------------------------
-    const manager = await AdminModel.create({
-      name,
-      email,
-      password,
-      role,
-      userId,
-    });
-
-    const managerData = await AdminModel.findById(manager._id).select("-password");
-
-    // ------------------------------------------
-    // Send Email to Manager
-    // ------------------------------------------
-    const { emailSubject, emailHtml } = managerAccessTemplate(role, name, userId, email, password);
-
-    // Attempt to send email, but don't fail the request if it fails
-    // Assuming sendMail is configured properly in .env
-    await sendMail(email, emailSubject, emailHtml);
-
-    // ------------------------------------------
-    // Success Response
-    // ------------------------------------------
     return res.status(201).json({
       success: true,
       message: "Manager created successfully",
       data: managerData,
     });
-
   } catch (error) {
-    console.error("Give Access Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
+    next(error);
+  }
+};
+
+//-------------------------------------------------------
+//@description - Get All Managers
+//@route - GET /api/v1/admin/managers
+//@access Private
+//-------------------------------------------------------
+export const getAllManagers = async (req, res, next) => {
+  try {
+    const managers = await getAllManagersService(req.admin.role);
+
+    return res.status(200).json({
+      success: true,
+      data: managers,
     });
+  } catch (error) {
+    next(error);
   }
 };
 
-// ======================================================
-// GET ALL MANAGERS
-// ======================================================
-export const getAllManagers = async (req, res) => {
+//-------------------------------------------------------
+//@description - Toggle Block Manager
+//@route - PATCH /api/v1/admin/managers/:id/block
+//@access Private
+//-------------------------------------------------------
+export const toggleBlockManager = async (req, res, next) => {
   try {
-    if (req.admin.role !== "admin") {
-      return res.status(403).json({ success: false, message: "Access Denied" });
-    }
-    const managers = await AdminModel.find({ role: { $in: ["web-manager", "app-manager"] } }).select("-password");
-    return res.status(200).json({ success: true, data: managers });
+    const manager = await toggleBlockManagerService(req.admin.role, req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: `Manager ${manager.isBlocked ? 'blocked' : 'unblocked'} successfully`,
+      data: manager,
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-// ======================================================
-// TOGGLE BLOCK MANAGER
-// ======================================================
-export const toggleBlockManager = async (req, res) => {
+//-------------------------------------------------------
+//@description - Delete Manager
+//@route - DELETE /api/v1/admin/managers/:id
+//@access Private
+//-------------------------------------------------------
+export const deleteManager = async (req, res, next) => {
   try {
-    if (req.admin.role !== "admin") {
-      return res.status(403).json({ success: false, message: "Access Denied" });
-    }
-    const { id } = req.params;
-    const manager = await AdminModel.findById(id);
-    if (!manager || manager.role === "admin") {
-      return res.status(404).json({ success: false, message: "Manager not found" });
-    }
-    manager.isBlocked = !manager.isBlocked;
-    await manager.save();
-    return res.status(200).json({ success: true, message: `Manager ${manager.isBlocked ? 'blocked' : 'unblocked'} successfully`, data: manager });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
+    await deleteManagerService(req.admin.role, req.params.id);
 
-// ======================================================
-// DELETE MANAGER
-// ======================================================
-export const deleteManager = async (req, res) => {
-  try {
-    if (req.admin.role !== "admin") {
-      return res.status(403).json({ success: false, message: "Access Denied" });
-    }
-    const { id } = req.params;
-    const manager = await AdminModel.findByIdAndDelete(id);
-    if (!manager) {
-      return res.status(404).json({ success: false, message: "Manager not found" });
-    }
-    return res.status(200).json({ success: true, message: "Manager deleted successfully" });
+    return res.status(200).json({
+      success: true,
+      message: "Manager deleted successfully",
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

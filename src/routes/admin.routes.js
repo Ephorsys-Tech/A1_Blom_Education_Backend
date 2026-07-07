@@ -7,6 +7,8 @@ import {
   LogoutAdmin,
   refreshAdminToken,
   registerAdmin,
+  verifyAdminEmail,
+  resendAdminOtp,
   resetPassword,
   getAllManagers,
   toggleBlockManager,
@@ -21,6 +23,8 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   giveAccessSchema,
+  verifyAdminEmailSchema,
+  resendAdminOtpSchema,
 } from "../validations/admin.validation.js";
 import { paramIdSchema } from "../validations/common.validation.js";
 
@@ -33,6 +37,14 @@ const router = express.Router();
 // Register Admin
 // POST -> /api/v1/admin/register
 router.post("/register", validate({ body: registerAdminSchema }), registerAdmin);
+
+// Verify Admin Email OTP
+// POST -> /api/v1/admin/verify-email
+router.post("/verify-email", validate({ body: verifyAdminEmailSchema }), verifyAdminEmail);
+
+// Resend Admin Registration OTP
+// POST -> /api/v1/admin/resend-otp
+router.post("/resend-otp", validate({ body: resendAdminOtpSchema }), resendAdminOtp);
 
 // Login Admin
 // POST -> /api/v1/admin/login

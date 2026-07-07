@@ -125,3 +125,30 @@ export const giveAccessSchema = z.object({
     .trim()
     .min(1, "User ID cannot be empty"),
 });
+
+/**
+ * Validation schema for Verify Admin Email OTP
+ */
+export const verifyAdminEmailSchema = z.object({
+  email: z
+    .string({ required_error: "Email is required" })
+    .trim()
+    .email("Enter a valid email address")
+    .toLowerCase(),
+
+  otp: z
+    .string({ required_error: "OTP is required" })
+    .trim()
+    .regex(/^[0-9]{6}$/, "OTP must be exactly 6 digits"),
+});
+
+/**
+ * Validation schema for Resend Admin OTP
+ */
+export const resendAdminOtpSchema = z.object({
+  email: z
+    .string({ required_error: "Email is required" })
+    .trim()
+    .email("Enter a valid email address")
+    .toLowerCase(),
+});

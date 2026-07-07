@@ -3,6 +3,8 @@ import { sendMail } from "../utils/sendMail.js";
 import { managerAccessTemplate } from "../utils/mailTemplates/managerAccessTemplate.js";
 import { generateAdminAccessToken } from "../utils/generateAccessToken.js";
 import { generateAdminRefreshToken } from "../utils/generateRefreshToken.js";
+import { generateOTP } from "../utils/generateOTP.js";
+import { sendEmailOTP } from "../utils/sendEmailOTP.js";
 import jwt from "jsonwebtoken";
 
 // ======================================================
@@ -11,12 +13,6 @@ import jwt from "jsonwebtoken";
 export const registerAdminService = async (data) => {
   const { name, email, password } = data;
 
-  if (!name || !email || !password) {
-    const error = new Error("All Fields are Required");
-    error.statusCode = 400;
-    throw error;
-  }
-
   const existingAdmin = await AdminModel.findOne({ email });
   if (existingAdmin) {
     const error = new Error("Admin Already Exists");
@@ -24,14 +20,93 @@ export const registerAdminService = async (data) => {
     throw error;
   }
 
+  // Generate email verification OTP
+  const otp = generateOTP();
+  const otpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
   const admin = await AdminModel.create({
     name,
     email,
     password,
+    isEmailVerified: false,
+    emailVerificationOtp: otp,
+    emailVerificationOtpExpire: otpExpire,
   });
+
+  // Send OTP to admin email
+  await sendEmailOTP(email, otp);
 
   const adminData = await AdminModel.findById(admin._id).select("-password");
   return adminData;
+};
+
+// ======================================================
+// VERIFY ADMIN EMAIL SERVICE
+// ======================================================
+export const verifyAdminEmailService = async (data) => {
+  const { email, otp } = data;
+
+  const admin = await AdminModel.findOne({ email }).select("+emailVerificationOtp +emailVerificationOtpExpire");
+  if (!admin) {
+    const error = new Error("Admin not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (admin.isEmailVerified) {
+    const error = new Error("Email is already verified.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (admin.emailVerificationOtp !== otp) {
+    const error = new Error("Invalid OTP.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!admin.emailVerificationOtpExpire || admin.emailVerificationOtpExpire < Date.now()) {
+    const error = new Error("OTP has expired. Please request a new one.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  admin.isEmailVerified = true;
+  admin.emailVerificationOtp = undefined;
+  admin.emailVerificationOtpExpire = undefined;
+  await admin.save();
+
+  const adminData = await AdminModel.findById(admin._id).select("-password");
+  return adminData;
+};
+
+// ======================================================
+// RESEND ADMIN OTP SERVICE
+// ======================================================
+export const resendAdminOtpService = async (data) => {
+  const { email } = data;
+
+  const admin = await AdminModel.findOne({ email });
+  if (!admin) {
+    const error = new Error("Admin not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (admin.isEmailVerified) {
+    const error = new Error("Email is already verified.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Generate new OTP
+  const otp = generateOTP();
+  admin.emailVerificationOtp = otp;
+  admin.emailVerificationOtpExpire = new Date(Date.now() + 10 * 60 * 1000);
+  await admin.save();
+
+  // Send OTP to admin email
+  await sendEmailOTP(email, otp);
 };
 
 // ======================================================
@@ -60,6 +135,13 @@ export const loginAdminService = async (data) => {
   if (admin.role === "admin" && loginMethod !== "email") {
     const error = new Error("Admin can only login using email address.");
     error.statusCode = 400;
+    throw error;
+  }
+
+  // Block unverified admins from logging in
+  if (admin.role === "admin" && !admin.isEmailVerified) {
+    const error = new Error("Please verify your email before logging in.");
+    error.statusCode = 403;
     throw error;
   }
 
@@ -176,12 +258,6 @@ export const getAdminProfileService = async (adminId) => {
 // FORGOT PASSWORD SERVICE
 // ======================================================
 export const forgotPasswordService = async (email) => {
-  if (!email) {
-    const error = new Error("Email is required");
-    error.statusCode = 400;
-    throw error;
-  }
-
   const admin = await AdminModel.findOne({ email });
   if (!admin) {
     const error = new Error("Admin not found");
@@ -189,34 +265,37 @@ export const forgotPasswordService = async (email) => {
     throw error;
   }
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = generateOTP();
   admin.resetOtp = otp;
   admin.resetOtpExpire = Date.now() + 10 * 60 * 1000;
   await admin.save();
 
-  // Return the OTP in case email templates are skipped or for dev debugging
-  return otp;
+  // Send password reset OTP via email
+  const subject = "Password Reset OTP - A1 Blom Education";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+      <h2 style="color: #2563eb; text-align: center;">Password Reset Request</h2>
+      <p>Hello ${admin.name},</p>
+      <p>Your OTP for password reset is:</p>
+      <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; text-align: center; margin: 20px 0;">
+        <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #1e3a8a;">${otp}</span>
+      </div>
+      <p>This OTP is valid for 10 minutes. Please do not share this code with anyone.</p>
+      <p>If you didn't request this, please ignore this email.</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <p style="font-size: 12px; color: #6b7280; text-align: center;">© ${new Date().getFullYear()} A1 Blom Education. All rights reserved.</p>
+    </div>
+  `;
+  await sendMail(admin.email, subject, html);
 };
 
 // ======================================================
 // RESET PASSWORD SERVICE
 // ======================================================
 export const resetPasswordService = async (data) => {
-  const { email, otp, password, confirmPassword } = data;
+  const { email, otp, password } = data;
 
-  if (!email || !otp || !password || !confirmPassword) {
-    const error = new Error("All fields are required");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (password !== confirmPassword) {
-    const error = new Error("Password and Confirm Password must match");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const admin = await AdminModel.findOne({ email });
+  const admin = await AdminModel.findOne({ email }).select("+resetOtp +resetOtpExpire");
   if (!admin) {
     const error = new Error("Admin not found");
     error.statusCode = 404;

@@ -118,34 +118,18 @@ export const refreshAdminToken = async (req, res, next) => {
     // Cookie Options for Access Token (10m)
     const accessCookieOption = {
       httpOnly: true,
-      secure: false,
+      secure: false, // true in production
       sameSite: "lax",
       maxAge: 10 * 60 * 1000,
     };
 
-    // Cookie Options for Refresh Token (1d)
-    const refreshCookieOption = {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000,
-    };
-
     res.cookie("accessToken", result.accessToken, accessCookieOption);
-    res.cookie("refreshToken", result.refreshToken, refreshCookieOption);
 
     return res.status(200).json({
       success: true,
       message: "Access token refreshed successfully.",
     });
   } catch (error) {
-    if (error.code === "INVALID_REFRESH_TOKEN") {
-      return res.status(error.statusCode || 401).json({
-        success: false,
-        code: error.code,
-        message: error.message,
-      });
-    }
     next(error);
   }
 };

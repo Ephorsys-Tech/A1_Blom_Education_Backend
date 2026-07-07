@@ -30,8 +30,6 @@ export const registerStudent = async (req, res, next) => {
       });
     }
 
-    console.log("Zod Result" ,result)
-    console.log("Zod Result data" ,result.data)
 
     const student = await registerStudentService(result.data);
 
@@ -55,7 +53,7 @@ export const verifyMobileOTP = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Mobile verified successfully.",
-      result,
+      result, 
     });
   } catch (error) {
     next(error);

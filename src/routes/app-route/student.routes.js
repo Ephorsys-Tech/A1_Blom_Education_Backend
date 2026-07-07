@@ -15,6 +15,9 @@ import {
   resendEmailOTP
 } from "../../controllers/appController/student.controller.js";
 import { isAuthenticated } from "../../middleware/isAuthenticated.js";
+import { validate } from "../../middleware/validate.middleware.js";
+import { studentUpdateProfile } from "../../validations/student.validation.js";
+
 
 const router = express.Router();
 
@@ -38,7 +41,7 @@ router.get("/profile", isAuthenticated, getMyProfile);
 // Update Profile
 // ==========================================
 
-router.put("/profile", isAuthenticated, updateProfile);
+router.put("/profile", isAuthenticated, validate({ body: studentUpdateProfile }), updateProfile);
 
 // ==========================================
 // LogOut Profile

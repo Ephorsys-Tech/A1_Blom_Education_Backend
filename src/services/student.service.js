@@ -387,18 +387,15 @@ export const updateProfileService = async (studentId, data) => {
     throw error;
   }
 
-  const { fullName, gender, selectedBatch, deviceToken, deviceType } = data;
+  const { fullName, gender, classNumber, deviceToken, deviceType } = data;
 
   if (fullName) student.fullName = fullName;
   if (gender) student.gender = gender;
 
-  if (
-    selectedBatch &&
-    selectedBatch.toString() !== student.selectedBatch.toString()
-  ) {
-    const newBatch = await Batch.findById(selectedBatch);
+  if (classNumber && classNumber !== student.classNumber) {
+    const newBatch = await Batch.findOne({ classNumber });
     if (!newBatch) {
-      const error = new Error("New selected batch does not exist.");
+      const error = new Error(`Batch for Class ${classNumber} does not exist.`);
       error.statusCode = 404;
       throw error;
     }
@@ -414,7 +411,8 @@ export const updateProfileService = async (studentId, data) => {
     newBatch.totalStudents = (newBatch.totalStudents || 0) + 1;
     await newBatch.save();
 
-    student.selectedBatch = selectedBatch;
+    student.classNumber = classNumber;
+    student.selectedBatch = newBatch._id;
   }
 
   if (deviceToken) student.deviceToken = deviceToken;

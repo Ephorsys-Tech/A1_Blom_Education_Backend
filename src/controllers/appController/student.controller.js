@@ -12,24 +12,26 @@ import {
   enrollStudentService,
   refreshAccessTokenService,
   verifyEmailOTPService,
-  resendEmailOTPService
+  resendEmailOTPService,
 } from "../../services/student.service.js";
-import { studentRegister } from "../../validations/student.validation.js";
+import {
+  studentLogin,
+  studentRegister,
+} from "../../validations/student.validation.js";
 
 // ==========================================
 // Register Student
 // ==========================================
 export const registerStudent = async (req, res, next) => {
   try {
-    const result = studentRegister.safeParse(req.body)
-        if (!result.success) {
+    const result = studentRegister.safeParse(req.body);
+    if (!result.success) {
       return res.status(400).json({
         success: false,
         message: "Validation failed",
         errors: result.error.format(),
       });
     }
-
 
     const student = await registerStudentService(result.data);
 
@@ -53,7 +55,7 @@ export const verifyMobileOTP = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Mobile verified successfully.",
-      result, 
+      result,
     });
   } catch (error) {
     next(error);
@@ -106,14 +108,24 @@ export const resendEmailOTP = async (req, res, next) => {
 // ==========================================
 export const loginStudent = async (req, res, next) => {
   try {
-    const result = await loginStudentService(req.body);
+    const result = studentLogin.safeParse(req.body);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.format(),
+      });
+    }
+
+    const student = await loginStudentService(result.data);
 
     return res.status(200).json({
       success: true,
       message: "Login Successfully.",
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-      student: result.student,
+      accessToken: student.accessToken,
+      refreshToken: student.refreshToken,
+      student: student.student,
     });
   } catch (error) {
     next(error);

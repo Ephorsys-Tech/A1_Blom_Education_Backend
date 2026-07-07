@@ -239,16 +239,6 @@ export const loginStudentService = async (data) => {
   const { mobile, password } = data;
 
   // ==========================================
-  // Validation
-  // ==========================================
-
-  if (!mobile || !password) {
-    const error = new Error("Mobile and Password are required.");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  // ==========================================
   // Find Student
   // ==========================================
 

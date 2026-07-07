@@ -5,6 +5,7 @@ import {
   giveAccess,
   loginAdmin,
   LogoutAdmin,
+  refreshAdminToken,
   registerAdmin,
   resetPassword,
   getAllManagers,
@@ -16,6 +17,7 @@ import { validate } from "../middleware/validate.middleware.js";
 import {
   registerAdminSchema,
   loginAdminSchema,
+  refreshAdminTokenSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   giveAccessSchema,
@@ -39,6 +41,10 @@ router.post("/login", validate({ body: loginAdminSchema }), loginAdmin);
 // Logout Admin
 // POST -> /api/v1/admin/logout
 router.post("/logout", LogoutAdmin);
+
+// Refresh Token
+// POST -> /api/v1/admin/refresh-token
+router.post("/refresh-token", validate({ body: refreshAdminTokenSchema }), refreshAdminToken);
 
 // ------------------------------------------------------
 // Admin Profile

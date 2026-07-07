@@ -54,6 +54,15 @@ const adminSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    // ======================================
+    // REFRESH TOKEN
+    // ======================================
+    refreshToken: {
+      type: String,
+      default: "",
+      select: false,
+    },
   },
   {
     timestamps: true,

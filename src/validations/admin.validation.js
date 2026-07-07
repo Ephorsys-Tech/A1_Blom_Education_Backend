@@ -152,3 +152,13 @@ export const resendAdminOtpSchema = z.object({
     .email("Enter a valid email address")
     .toLowerCase(),
 });
+
+/**
+ * Validation schema for Admin updating Manager Password
+ */
+export const updateManagerPasswordSchema = z.object({
+  password: z
+    .string({ required_error: "Password is required" })
+    .min(6, "Password must be at least 6 characters"),
+});
+

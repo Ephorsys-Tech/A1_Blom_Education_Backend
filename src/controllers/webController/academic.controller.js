@@ -328,7 +328,7 @@ export const createSubject = async (req, res) => {
           message: "Only PDF files are allowed for textbook",
         });
       }
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "textbooks", "auto");
+      const uploadResult = await uploadToCloudinary(req.file.buffer, "textbooks", "image");
       pdfUrl = uploadResult.url;
       pdfPublicId = uploadResult.publicId;
     }
@@ -474,7 +474,7 @@ export const updateSubject = async (req, res) => {
       }
 
       // Upload new PDF
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "textbooks", "auto");
+      const uploadResult = await uploadToCloudinary(req.file.buffer, "textbooks", "image");
       subject.pdfUrl = uploadResult.url;
       subject.pdfPublicId = uploadResult.publicId;
     }

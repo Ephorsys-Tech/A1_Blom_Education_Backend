@@ -21,7 +21,7 @@ export const generateAdminAccessToken = (admin) => {
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
-      expiresIn: "10m",
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRE_Admin,
     },
   );
 };

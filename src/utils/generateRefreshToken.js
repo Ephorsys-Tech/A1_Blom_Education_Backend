@@ -19,7 +19,7 @@ export const generateAdminRefreshToken = (adminId) => {
     },
     process.env.REFRESH_TOKEN_SECRET,
     {
-      expiresIn: "1d",
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRE_Admin,
     },
   );
 };

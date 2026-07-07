@@ -8,10 +8,10 @@ import {
   getAdminProfileService,
   forgotPasswordService,
   resetPasswordService,
-  giveAccessService,
   getAllManagersService,
   toggleBlockManagerService,
-  deleteManagerService
+  deleteManagerService,
+  updateManagerPasswordService
 } from "../services/admin.service.js";
 
 //-------------------------------------------------------
@@ -295,6 +295,24 @@ export const deleteManager = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Manager deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//-------------------------------------------------------
+//@description - Update Manager Password
+//@route - PATCH /api/v1/admin/managers/:id/update-password
+//@access Private (Admin only)
+//-------------------------------------------------------
+export const updateManagerPassword = async (req, res, next) => {
+  try {
+    await updateManagerPasswordService(req.admin.role, req.params.id, req.body.password);
+
+    return res.status(200).json({
+      success: true,
+      message: "Manager password updated successfully",
     });
   } catch (error) {
     next(error);

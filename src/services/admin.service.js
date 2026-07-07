@@ -1,6 +1,7 @@
 import AdminModel from "../model/admin.model.js";
 import { sendMail } from "../utils/sendMail.js";
 import { managerAccessTemplate } from "../utils/mailTemplates/managerAccessTemplate.js";
+import { managerPasswordUpdateTemplate } from "../utils/mailTemplates/managerPasswordUpdateTemplate.js";
 import { generateAdminAccessToken } from "../utils/generateAccessToken.js";
 import { generateAdminRefreshToken } from "../utils/generateRefreshToken.js";
 import { generateOTP } from "../utils/generateOTP.js";
@@ -430,5 +431,40 @@ export const deleteManagerService = async (requesterRole, managerId) => {
     const error = new Error("Manager not found");
     error.statusCode = 404;
     throw error;
+  }
+};
+
+// ======================================================
+// UPDATE MANAGER PASSWORD SERVICE
+// ======================================================
+export const updateManagerPasswordService = async (requesterRole, managerId, newPassword) => {
+  if (requesterRole !== "admin") {
+    const error = new Error("Access Denied: Only Admin can perform this action");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const manager = await AdminModel.findById(managerId);
+  if (!manager || manager.role === "admin") {
+    const error = new Error("Manager not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  manager.password = newPassword;
+  await manager.save();
+
+  // Send email to manager with new password
+  const { emailSubject, emailHtml } = managerPasswordUpdateTemplate(
+    manager.role,
+    manager.name,
+    manager.email,
+    newPassword
+  );
+
+  try {
+    await sendMail(manager.email, emailSubject, emailHtml);
+  } catch (mailError) {
+    console.error("Mail dispatch failed in updateManagerPasswordService, continuing:", mailError.message);
   }
 };

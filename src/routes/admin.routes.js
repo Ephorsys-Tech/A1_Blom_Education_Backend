@@ -13,6 +13,7 @@ import {
   getAllManagers,
   toggleBlockManager,
   deleteManager,
+  updateManagerPassword,
 } from "../controllers/admin.controller.js";
 import protect from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
@@ -25,6 +26,7 @@ import {
   giveAccessSchema,
   verifyAdminEmailSchema,
   resendAdminOtpSchema,
+  updateManagerPasswordSchema,
 } from "../validations/admin.validation.js";
 import { paramIdSchema } from "../validations/common.validation.js";
 
@@ -99,6 +101,12 @@ router.patch("/managers/:id/block", protect, validate({ params: paramIdSchema })
 // DELETE -> /api/v1/admin/managers/:id
 // Protect
 router.delete("/managers/:id", protect, validate({ params: paramIdSchema }), deleteManager);
+
+// ----------------------------------------------------
+// Update Manager Password
+// PATCH -> /api/v1/admin/managers/:id/update-password
+// Protect
+router.patch("/managers/:id/update-password", protect, validate({ params: paramIdSchema, body: updateManagerPasswordSchema }), updateManagerPassword);
 
 
 export default router;

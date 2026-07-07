@@ -52,3 +52,11 @@ export const studentUpdateProfile = z.object({
   deviceType: z.string().trim().optional(),
 });
 
+export const studentLogin = z.object({
+  mobile: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{10}$/, "Phone must be exactly 10 digits"),
+
+  password: z.string().min(8, "Password should be at least 8 characters"),
+});

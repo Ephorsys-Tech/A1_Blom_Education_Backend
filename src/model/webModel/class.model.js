@@ -16,6 +16,14 @@ const classSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    imageUrl: {
+      type: String,
+      default: null,
+    },
+    imagePublicId: {
+      type: String,
+      default: null,
+    },
     order: {
       type: Number,
       default: 0,

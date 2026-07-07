@@ -63,11 +63,22 @@ export const createClass = async (req, res) => {
       });
     }
 
+    let imageUrl = null;
+    let imagePublicId = null;
+
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(req.file.buffer, "classes", "auto");
+      imageUrl = uploadResult.url;
+      imagePublicId = uploadResult.publicId;
+    }
+
     const newClass = await ClassModel.create({
       name,
       numericValue,
       isPublished: isPublished !== undefined ? isPublished : true,
       order: order || 0,
+      imageUrl,
+      imagePublicId,
     });
 
     return res.status(201).json({
@@ -179,6 +190,23 @@ export const updateClass = async (req, res) => {
       }
     }
 
+    // Handle Class cover image upload/replacement
+    if (req.file) {
+      // Delete old image if exists
+      if (classData.imagePublicId) {
+        try {
+          await deleteFromCloudinary(classData.imagePublicId, "image");
+        } catch (cloudinaryErr) {
+          console.error("Error deleting old class image:", cloudinaryErr);
+        }
+      }
+
+      // Upload new image
+      const uploadResult = await uploadToCloudinary(req.file.buffer, "classes", "auto");
+      classData.imageUrl = uploadResult.url;
+      classData.imagePublicId = uploadResult.publicId;
+    }
+
     Object.assign(classData, result.data);
     await classData.save();
 
@@ -207,6 +235,15 @@ export const deleteClass = async (req, res) => {
         success: false,
         message: "Class not found",
       });
+    }
+
+    // Delete class cover image from Cloudinary if exists
+    if (classData.imagePublicId) {
+      try {
+        await deleteFromCloudinary(classData.imagePublicId, "image");
+      } catch (cloudinaryErr) {
+        console.error("Error deleting class image from Cloudinary:", cloudinaryErr);
+      }
     }
 
     // Find all subjects in this class

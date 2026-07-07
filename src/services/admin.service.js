@@ -148,16 +148,15 @@ export const refreshAdminTokenService = async (incomingRefreshToken) => {
     throw error;
   }
 
-  const accessToken = generateAdminAccessToken(admin);
-  const refreshToken = generateAdminRefreshToken(admin._id);
+  // ------------------------------------------
+  // Everything checks out → issue a fresh
+  // Access Token only. Refresh Token is left
+  // untouched so it keeps counting down its
+  // own 1-day lifespan.
+  // ------------------------------------------
+  const newAccessToken = generateAdminAccessToken(admin);
 
-  admin.refreshToken = refreshToken;
-  await admin.save();
-
-  return {
-    accessToken,
-    refreshToken,
-  };
+  return { accessToken: newAccessToken };
 };
 
 // ======================================================

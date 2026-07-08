@@ -17,7 +17,12 @@ export const validate = (schemas) => {
 
       // Validate query parameters if schema is provided
       if (schemas.query) {
-        req.query = await schemas.query.parseAsync(req.query);
+        Object.defineProperty(req, 'query', {
+          value: await schemas.query.parseAsync(req.query),
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
       }
 
       // Validate route parameters if schema is provided

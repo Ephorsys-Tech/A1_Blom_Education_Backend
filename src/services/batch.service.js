@@ -141,6 +141,7 @@ export const getBatchesService = async () => {
 // ==========================================
 export const getAdminBatchesService = async () => {
   const batches = await Batch.find().sort({ sortOrder: 1 });
+  
   return batches;
 };
 

@@ -1,5 +1,5 @@
 import Chapter from "../model/appModel/chapter.model.js";
-import Course from "../model/appModel/course.model.js";
+import Subject from "../model/appModel/subjects.model.js";
 import Lecture from "../model/appModel/lecture.model.js";
 import { deleteFromCloudinary } from "../config/cloudinary.config.js";
 
@@ -7,26 +7,26 @@ import { deleteFromCloudinary } from "../config/cloudinary.config.js";
 // CREATE CHAPTER Service
 // ==========================================
 export const createChapterService = async (data) => {
-  const { name, chapterNumber, description, course: courseId, sortOrder } = data || {};
+  const { name, chapterNumber, description, subject: subjectId, sortOrder } = data || {};
 
-  if (!name || chapterNumber === undefined || !courseId) {
-    const error = new Error("Name, chapterNumber, and course reference are required.");
+  if (!name || chapterNumber === undefined || !subjectId) {
+    const error = new Error("Name, chapterNumber, and subject reference are required.");
     error.statusCode = 400;
     throw error;
   }
 
-  // Verify course exists
-  const targetCourse = await Course.findById(courseId);
-  if (!targetCourse) {
-    const error = new Error("Course/Subject not found.");
+  // Verify subject exists
+  const targetSubject = await Subject.findById(subjectId);
+  if (!targetSubject) {
+    const error = new Error("Subject not found.");
     error.statusCode = 404;
     throw error;
   }
 
-  // Check unique chapterNumber per course
-  const duplicate = await Chapter.findOne({ course: courseId, chapterNumber });
+  // Check unique chapterNumber per subject
+  const duplicate = await Chapter.findOne({ subject: subjectId, chapterNumber });
   if (duplicate) {
-    const error = new Error(`Chapter number ${chapterNumber} already exists in this course.`);
+    const error = new Error(`Chapter number ${chapterNumber} already exists in this subject.`);
     error.statusCode = 400;
     throw error;
   }
@@ -35,7 +35,7 @@ export const createChapterService = async (data) => {
     name,
     chapterNumber,
     description: description || "",
-    course: courseId,
+    subject: subjectId,
     sortOrder: sortOrder || 0,
   });
 
@@ -46,7 +46,7 @@ export const createChapterService = async (data) => {
 // UPDATE CHAPTER Service
 // ==========================================
 export const updateChapterService = async (id, data) => {
-  const { name, chapterNumber, description, course: courseId, sortOrder, isActive } = data || {};
+  const { name, chapterNumber, description, subject: subjectId, sortOrder, isActive } = data || {};
 
   const chapter = await Chapter.findById(id);
   if (!chapter) {
@@ -56,29 +56,29 @@ export const updateChapterService = async (id, data) => {
   }
 
   // Check duplicate chapterNumber if changed
-  if (chapterNumber !== undefined && (chapterNumber !== chapter.chapterNumber || (courseId && courseId !== chapter.course.toString()))) {
-    const activeCourseId = courseId || chapter.course;
+  if (chapterNumber !== undefined && (chapterNumber !== chapter.chapterNumber || (subjectId && subjectId !== chapter.subject.toString()))) {
+    const activeSubjectId = subjectId || chapter.subject;
     const duplicate = await Chapter.findOne({
-      course: activeCourseId,
+      subject: activeSubjectId,
       chapterNumber,
       _id: { $ne: id },
     });
     if (duplicate) {
-      const error = new Error(`Chapter number ${chapterNumber} already exists in this course.`);
+      const error = new Error(`Chapter number ${chapterNumber} already exists in this subject.`);
       error.statusCode = 400;
       throw error;
     }
     chapter.chapterNumber = chapterNumber;
   }
 
-  if (courseId) {
-    const targetCourse = await Course.findById(courseId);
-    if (!targetCourse) {
-      const error = new Error("New referenced course not found.");
+  if (subjectId) {
+    const targetSubject = await Subject.findById(subjectId);
+    if (!targetSubject) {
+      const error = new Error("New referenced subject not found.");
       error.statusCode = 404;
       throw error;
     }
-    chapter.course = courseId;
+    chapter.subject = subjectId;
   }
 
   if (name !== undefined) chapter.name = name;
@@ -117,14 +117,14 @@ export const deleteChapterService = async (id) => {
 // ==========================================
 // GET ACTIVE CHAPTERS Service
 // ==========================================
-export const getChaptersService = async (courseId) => {
-  if (!courseId) {
-    const error = new Error("Course query parameter is required.");
+export const getChaptersService = async (subjectId) => {
+  if (!subjectId) {
+    const error = new Error("Subject query parameter is required.");
     error.statusCode = 400;
     throw error;
   }
 
-  const chapters = await Chapter.find({ course: courseId, isActive: true })
+  const chapters = await Chapter.find({ subject: subjectId, isActive: true })
     .sort({ sortOrder: 1, chapterNumber: 1 });
 
   return chapters;
@@ -133,14 +133,14 @@ export const getChaptersService = async (courseId) => {
 // ==========================================
 // GET ALL CHAPTERS (Admin Only) Service
 // ==========================================
-export const getAdminChaptersService = async (courseId) => {
-  if (!courseId) {
-    const error = new Error("Course query parameter is required.");
+export const getAdminChaptersService = async (subjectId) => {
+  if (!subjectId) {
+    const error = new Error("Subject query parameter is required.");
     error.statusCode = 400;
     throw error;
   }
 
-  const chapters = await Chapter.find({ course: courseId })
+  const chapters = await Chapter.find({ subject: subjectId })
     .sort({ sortOrder: 1, chapterNumber: 1 });
 
   return chapters;
@@ -150,7 +150,7 @@ export const getAdminChaptersService = async (courseId) => {
 // GET CHAPTER BY ID Service
 // ==========================================
 export const getChapterByIdService = async (id) => {
-  const chapter = await Chapter.findById(id).populate("course", "name code");
+  const chapter = await Chapter.findById(id).populate("subject", "name code");
   if (!chapter) {
     const error = new Error("Chapter not found.");
     error.statusCode = 404;

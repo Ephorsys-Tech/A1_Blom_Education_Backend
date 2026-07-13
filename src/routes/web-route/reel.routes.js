@@ -7,15 +7,16 @@ import {
 } from "../../controllers/webController/reel.controller.js";
 import protect from "../../middleware/auth.middleware.js";
 import upload from "../../middleware/multer.middleware.js";
+import { cacheMiddleware, invalidateCacheMiddleware } from "../../utils/redisCache.js";
 
 const router = express.Router();
 
 // Public routes
-router.get("/", getReels);
+router.get("/", cacheMiddleware("reels", 300), getReels);
 
 // Admin / protected routes
-router.post("/upload", protect, upload.single("thumbnail"), uploadReel);
-router.put("/:id", protect, upload.single("thumbnail"), updateReel);
-router.delete("/:id", protect, deleteReel);
+router.post("/upload", protect, invalidateCacheMiddleware("reels"), upload.single("thumbnail"), uploadReel);
+router.put("/:id", protect, invalidateCacheMiddleware("reels"), upload.single("thumbnail"), updateReel);
+router.delete("/:id", protect, invalidateCacheMiddleware("reels"), deleteReel);
 
 export default router;

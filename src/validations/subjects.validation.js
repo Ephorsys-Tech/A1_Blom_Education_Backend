@@ -2,18 +2,18 @@ import { z } from "zod";
 import { objectIdSchema } from "./common.validation.js";
 
 /**
- * Validation schema for Course creation
+ * Validation schema for Subject creation
  */
-export const createCourseSchema = z.object({
+export const createSubjectSchema = z.object({
   name: z
-    .string({ required_error: "Course name is required" })
+    .string({ required_error: "Subject name is required" })
     .trim()
-    .min(1, "Course name cannot be empty"),
+    .min(1, "Subject name cannot be empty"),
 
   code: z
-    .string({ required_error: "Course code is required" })
+    .string({ required_error: "Subject code is required" })
     .trim()
-    .min(1, "Course code cannot be empty"),
+    .min(1, "Subject code cannot be empty"),
 
   description: z
     .string()
@@ -24,8 +24,8 @@ export const createCourseSchema = z.object({
 
   price: z.coerce
     .number({
-      required_error: "Course price is required",
-      invalid_type_error: "Course price must be a valid number",
+      required_error: "Subject price is required",
+      invalid_type_error: "Subject price must be a valid number",
     })
     .min(0, "Price cannot be negative"),
 
@@ -34,7 +34,7 @@ export const createCourseSchema = z.object({
     z.coerce.number().min(0, "Discount price cannot be negative").optional()
   ),
 
-  batch: objectIdSchema,
+  classes: objectIdSchema,
 
   sortOrder: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
@@ -43,19 +43,19 @@ export const createCourseSchema = z.object({
 });
 
 /**
- * Validation schema for Course updates
+ * Validation schema for Subject updates
  */
-export const updateCourseSchema = z.object({
+export const updateSubjectSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Course name cannot be empty")
+    .min(1, "Subject name cannot be empty")
     .optional(),
 
   code: z
     .string()
     .trim()
-    .min(1, "Course code cannot be empty")
+    .min(1, "Subject code cannot be empty")
     .optional(),
 
   description: z
@@ -66,7 +66,7 @@ export const updateCourseSchema = z.object({
 
   price: z.coerce
     .number({
-      invalid_type_error: "Course price must be a valid number",
+      invalid_type_error: "Subject price must be a valid number",
     })
     .min(0, "Price cannot be negative")
     .optional(),
@@ -76,7 +76,7 @@ export const updateCourseSchema = z.object({
     z.coerce.number().min(0, "Discount price cannot be negative").optional()
   ),
 
-  batch: objectIdSchema.optional(),
+  classes: objectIdSchema.optional(),
 
   sortOrder: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
@@ -90,8 +90,8 @@ export const updateCourseSchema = z.object({
 });
 
 /**
- * Validation schema for Course query parameters
+ * Validation schema for Subject query parameters
  */
-export const getCoursesQuerySchema = z.object({
-  batch: objectIdSchema.optional(),
+export const getSubjectsQuerySchema = z.object({
+  classes: objectIdSchema.optional(),
 });

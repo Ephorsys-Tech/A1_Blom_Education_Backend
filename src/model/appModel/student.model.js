@@ -62,12 +62,12 @@ const studentSchema = new mongoose.Schema(
     },
 
     // ==========================================
-    // BATCH
+    // CLASS
     // ==========================================
 
-    selectedBatch: {
+    selectedClass: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Batch",
+      ref: "Classes",
     },
 
     // ==========================================
@@ -177,14 +177,14 @@ const studentSchema = new mongoose.Schema(
     },
 
     // ==========================================
-    // ENROLLED COURSES (🔥 MAIN ADDITION)
+    // ENROLLED SUBJECTS
     // ==========================================
 
-    enrolledCourses: [
+    enrolledSubjects: [
       {
-        course: {
+        subject: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Course",
+          ref: "Subject",
           required: true,
         },
 
@@ -222,14 +222,14 @@ const studentSchema = new mongoose.Schema(
     ],
 
     // ==========================================
-    // ENROLLED BATCHES
+    // ENROLLED CLASSES
     // ==========================================
 
-    enrolledBatches: [
+    enrolledClasses: [
       {
-        batch: {
+        classes: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Batch",
+          ref: "Classes",
           required: true,
         },
 

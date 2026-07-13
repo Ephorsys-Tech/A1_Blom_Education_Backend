@@ -7,6 +7,7 @@ import { generateAdminRefreshToken } from "../utils/generateRefreshToken.js";
 import { generateOTP } from "../utils/generateOTP.js";
 import { sendEmailOTP } from "../utils/sendEmailOTP.js";
 import jwt from "jsonwebtoken";
+import { deleteCachedData } from "../utils/redisCache.js";
 
 // ======================================================
 // REGISTER ADMIN SERVICE
@@ -185,6 +186,7 @@ export const logoutAdminService = async (token) => {
     try {
       const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
       await AdminModel.findByIdAndUpdate(decoded.id, { refreshToken: "" });
+      await deleteCachedData(`cache:admin:id:${decoded.id}`);
     } catch (err) {
       // Ignore invalid or expired token errors during logout
     }
@@ -319,6 +321,7 @@ export const resetPasswordService = async (data) => {
   admin.resetOtp = undefined;
   admin.resetOtpExpire = undefined;
   await admin.save();
+  await deleteCachedData(`cache:admin:id:${admin._id}`);
 };
 
 // ======================================================
@@ -412,6 +415,7 @@ export const toggleBlockManagerService = async (requesterRole, managerId) => {
 
   manager.isBlocked = !manager.isBlocked;
   await manager.save();
+  await deleteCachedData(`cache:admin:id:${manager._id}`);
 
   return manager;
 };
@@ -432,6 +436,7 @@ export const deleteManagerService = async (requesterRole, managerId) => {
     error.statusCode = 404;
     throw error;
   }
+  await deleteCachedData(`cache:admin:id:${managerId}`);
 };
 
 // ======================================================
@@ -453,6 +458,7 @@ export const updateManagerPasswordService = async (requesterRole, managerId, new
 
   manager.password = newPassword;
   await manager.save();
+  await deleteCachedData(`cache:admin:id:${manager._id}`);
 
   // Send email to manager with new password
   const { emailSubject, emailHtml } = managerPasswordUpdateTemplate(

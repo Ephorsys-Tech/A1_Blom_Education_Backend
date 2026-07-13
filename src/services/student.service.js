@@ -1,6 +1,6 @@
 import Student from "../model/appModel/student.model.js";
-import Batch from "../model/appModel/batch.model.js";
-import Course from "../model/appModel/course.model.js";
+import Classes from "../model/appModel/classes.model.js";
+import Subject from "../model/appModel/subjects.model.js";
 import { generateAccessToken } from "../utils/generateAccessToken.js";
 import { generateOTP } from "../utils/generateOTP.js";
 import { generateRefreshToken } from "../utils/generateRefreshToken.js";
@@ -9,6 +9,7 @@ import { verifyOTP } from "../utils/verifyOTP.js";
 import { sendEmailOTP } from "../utils/sendEmailOTP.js";
 import { sendCongratulationMail } from "../utils/sendCongratulationMail.js";
 import jwt from "jsonwebtoken";
+import { deleteCachedData } from "../utils/redisCache.js";
 
 // ==========================================
 // Register Student Service
@@ -328,7 +329,7 @@ export const loginStudentService = async (data) => {
       id: student._id,
       fullName: student.fullName,
       mobile: student.mobile,
-      selectedBatch: student.selectedBatch,
+      selectedClass: student.selectedClass,
       role: student.role,
     },
   };
@@ -345,9 +346,9 @@ export const getMyProfileService = async (studentId) => {
   }
 
   const student = await Student.findById(studentId)
-    .populate("selectedBatch")
-    .populate("enrolledCourses.course")
-    .populate("enrolledBatches.batch")
+    .populate("selectedClass")
+    .populate("enrolledSubjects.subject")
+    .populate("enrolledClasses.classes")
 
   if (!student) {
     const error = new Error("Student not found.");
@@ -383,26 +384,26 @@ export const updateProfileService = async (studentId, data) => {
   if (gender) student.gender = gender;
 
   if (classNumber && classNumber !== student.classNumber) {
-    const newBatch = await Batch.findOne({ classNumber });
-    if (!newBatch) {
-      const error = new Error(`Batch for Class ${classNumber} does not exist.`);
+    const newClass = await Classes.findOne({ classNumber });
+    if (!newClass) {
+      const error = new Error(`Class ${classNumber} does not exist.`);
       error.statusCode = 404;
       throw error;
     }
 
-    // Decrement count from old batch
-    if (student.selectedBatch) {
-      await Batch.findByIdAndUpdate(student.selectedBatch, {
+    // Decrement count from old class
+    if (student.selectedClass) {
+      await Classes.findByIdAndUpdate(student.selectedClass, {
         $inc: { totalStudents: -1 },
       });
     }
 
-    // Increment count in new batch
-    newBatch.totalStudents = (newBatch.totalStudents || 0) + 1;
-    await newBatch.save();
+    // Increment count in new class
+    newClass.totalStudents = (newClass.totalStudents || 0) + 1;
+    await newClass.save();
 
     student.classNumber = classNumber;
-    student.selectedBatch = newBatch._id;
+    student.selectedClass = newClass._id;
   }
 
   if (deviceToken) student.deviceToken = deviceToken;
@@ -410,10 +411,12 @@ export const updateProfileService = async (studentId, data) => {
 
   await student.save();
 
+  await deleteCachedData(`cache:student:id:${studentId}`);
+
   return Student.findById(studentId)
-    .populate("selectedBatch")
-    .populate("enrolledCourses.course")
-    .populate("enrolledBatches.batch");
+    .populate("selectedClass")
+    .populate("enrolledSubjects.subject")
+    .populate("enrolledClasses.classes");
 };
 
 // ==========================================
@@ -445,6 +448,8 @@ export const logoutStudentService = async (studentId) => {
   // student.deviceToken = "";
 
   await student.save();
+
+  await deleteCachedData(`cache:student:id:${studentId}`);
 
   return true;
 };
@@ -508,24 +513,26 @@ export const confirmDeleteAccountService = async (studentId, otp) => {
     throw error;
   }
 
-  // Decrement totalStudents count in their selected batch
-  if (student.selectedBatch) {
-    await Batch.findByIdAndUpdate(student.selectedBatch, {
+  // Decrement totalStudents count in their selected class
+  if (student.selectedClass) {
+    await Classes.findByIdAndUpdate(student.selectedClass, {
       $inc: { totalStudents: -1 },
     });
   }
 
-  // Decrement totalStudents count in all enrolled batches
-  if (student.enrolledBatches && student.enrolledBatches.length > 0) {
-    const batchIds = student.enrolledBatches.map((b) => b.batch);
-    await Batch.updateMany(
-      { _id: { $in: batchIds } },
+  // Decrement totalStudents count in all enrolled classes
+  if (student.enrolledClasses && student.enrolledClasses.length > 0) {
+    const classIds = student.enrolledClasses.map((b) => b.classes);
+    await Classes.updateMany(
+      { _id: { $in: classIds } },
       { $inc: { totalStudents: -1 } },
     );
   }
 
   // Hard Delete Account
   await Student.findByIdAndDelete(studentId);
+
+  await deleteCachedData(`cache:student:id:${studentId}`);
 
   return true;
 };
@@ -539,7 +546,7 @@ export const enrollStudentService = async (studentId, data) => {
 
   if (!type || !id) {
     const error = new Error(
-      "Enrollment type ('course' or 'batch') and target ID are required.",
+      "Enrollment type ('subject' or 'classes') and target ID are required.",
     );
     error.statusCode = 400;
     throw error;
@@ -561,85 +568,85 @@ export const enrollStudentService = async (studentId, data) => {
     throw error;
   }
 
-  if (type === "course") {
-    const course = await Course.findById(id);
-    if (!course || !course.isActive) {
-      const error = new Error("Course not found or inactive.");
+  if (type === "subject") {
+    const subject = await Subject.findById(id);
+    if (!subject || !subject.isActive) {
+      const error = new Error("Subject not found or inactive.");
       error.statusCode = 404;
       throw error;
     }
 
-    // Check if student is already enrolled in the course
-    const isEnrolled = student.enrolledCourses.some(
-      (item) => item.course.toString() === course._id.toString(),
+    // Check if student is already enrolled in the subject
+    const isEnrolled = student.enrolledSubjects.some(
+      (item) => item.subject.toString() === subject._id.toString(),
     );
 
     if (isEnrolled) {
-      const error = new Error("Already enrolled in this course.");
+      const error = new Error("Already enrolled in this subject.");
       error.statusCode = 400;
       throw error;
     }
 
-    student.enrolledCourses.push({
-      course: course._id,
+    student.enrolledSubjects.push({
+      subject: subject._id,
       enrolledAt: new Date(),
       paymentId,
       amountPaid,
       paymentStatus: "Completed",
     });
-  } else if (type === "batch") {
-    const batch = await Batch.findById(id);
-    if (!batch || !batch.isActive) {
-      const error = new Error("Batch not found or inactive.");
+  } else if (type === "classes") {
+    const classes = await Classes.findById(id);
+    if (!classes || !classes.isActive) {
+      const error = new Error("Class not found or inactive.");
       error.statusCode = 404;
       throw error;
     }
 
-    // Check if student is already enrolled in the batch
-    const isEnrolledInBatch = student.enrolledBatches.some(
-      (item) => item.batch.toString() === batch._id.toString(),
+    // Check if student is already enrolled in the class
+    const isEnrolledInClass = student.enrolledClasses.some(
+      (item) => item.classes.toString() === classes._id.toString(),
     );
 
-    if (isEnrolledInBatch) {
-      const error = new Error("Already enrolled in this batch.");
+    if (isEnrolledInClass) {
+      const error = new Error("Already enrolled in this class.");
       error.statusCode = 400;
       throw error;
     }
 
-    student.enrolledBatches.push({
-      batch: batch._id,
+    student.enrolledClasses.push({
+      classes: classes._id,
       enrolledAt: new Date(),
       paymentId,
       amountPaid,
       paymentStatus: "Completed",
     });
 
-    // Find all active courses of this batch
-    const courses = await Course.find({ batch: batch._id, isActive: true });
+    // Find all active subjects of this class
+    const subjects = await Subject.find({ classes: classes._id, isActive: true });
 
-    // Add each course to enrolledCourses if not already present
-    for (const course of courses) {
-      const isAlreadyEnrolled = student.enrolledCourses.some(
-        (item) => item.course.toString() === course._id.toString(),
+    // Add each subject to enrolledSubjects if not already present
+    for (const subj of subjects) {
+      const isAlreadyEnrolled = student.enrolledSubjects.some(
+        (item) => item.subject.toString() === subj._id.toString(),
       );
 
       if (!isAlreadyEnrolled) {
-        student.enrolledCourses.push({
-          course: course._id,
+        student.enrolledSubjects.push({
+          subject: subj._id,
           enrolledAt: new Date(),
           paymentId,
-          amountPaid: 0, // Individual course paid via batch enrollment
+          amountPaid: 0, // Individual subject paid via class enrollment
           paymentStatus: "Completed",
         });
       }
     }
 
-    // Increment totalStudents count for the enrolled batch
-    batch.totalStudents = (batch.totalStudents || 0) + 1;
-    await batch.save();
+    // Increment totalStudents count for the enrolled class
+    classes.totalStudents = (classes.totalStudents || 0) + 1;
+    await classes.save();
   } else {
     const error = new Error(
-      "Invalid enrollment type. Must be 'course' or 'batch'.",
+      "Invalid enrollment type. Must be 'subject' or 'classes'.",
     );
     error.statusCode = 400;
     throw error;
@@ -647,10 +654,12 @@ export const enrollStudentService = async (studentId, data) => {
 
   await student.save();
 
+  await deleteCachedData(`cache:student:id:${studentId}`);
+
   return Student.findById(studentId)
-    .populate("selectedBatch")
-    .populate("enrolledCourses.course")
-    .populate("enrolledBatches.batch");
+    .populate("selectedClass")
+    .populate("enrolledSubjects.subject")
+    .populate("enrolledClasses.classes");
 };
 
 // ==========================================

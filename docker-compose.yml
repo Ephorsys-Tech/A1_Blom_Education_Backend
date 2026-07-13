@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Local Redis service for rate limiting
+  redis-server:
+    image: redis:alpine
+    container_name: blom_education_redis
+    ports:
+      - "6379:6379"
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  # Node.js backend application service
+  # web:
+  #   build: .
+  #   container_name: blom_education_app
+  #   ports:
+  #     - "8080:8080"
+  #   restart: always
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PORT=8080
+  #     # Force use of the local dockerized Redis server for testing.
+  #     # Comment the line below if you want to test against Upstash Redis.
+  #     - REDIS_URL=redis://redis-server:6379
+  #   depends_on:
+  #     - redis-server
+
+volumes:
+  redis_data:

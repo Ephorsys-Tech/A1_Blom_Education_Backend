@@ -21,16 +21,17 @@ import { studentUpdateProfile } from "../../validations/student.validation.js";
 
 const router = express.Router();
 
+
 // ==========================================
 // Student Authentication
 // ==========================================
 
-router.post("/register", registerStudent);
-router.post("/verify-mobile-otp", verifyMobileOTP);
-router.post("/resend-mobile-otp", resendMobileOTP);
-router.post("/verify-email-otp", verifyEmailOTP);
-router.post("/resend-email-otp", resendEmailOTP);
-router.post("/login", loginStudent);
+router.post("/register",  registerStudent);
+router.post("/verify-mobile-otp",  verifyMobileOTP);
+router.post("/resend-mobile-otp",  resendMobileOTP);
+router.post("/verify-email-otp",  verifyEmailOTP);
+router.post("/resend-email-otp",  resendEmailOTP);
+router.post("/login",  loginStudent);
 
 // ==========================================
 // Student Profile Picture
@@ -52,11 +53,12 @@ router.post("/logout", isAuthenticated, logoutStudent);
 router.post(
   "/delete-account/request-otp",
   isAuthenticated,
+  
   requestDeleteAccountOTP,
 );
 
 // Step 2: Confirm OTP & Delete
-router.delete("/delete-account/confirm", isAuthenticated, confirmDeleteAccount);
+router.delete("/delete-account/confirm", isAuthenticated,  confirmDeleteAccount);
 
 // ==========================================
 // Enrollment Route

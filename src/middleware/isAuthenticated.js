@@ -19,8 +19,7 @@ export const isAuthenticated = async (req, res, next) => {
     const token = authHeader.split(" ")[1];
 
     // ==========================================
-    // Verify Token (separated so we can tell
-    // "expired" apart from "invalid/tampered")
+    // Verify Token
     // ==========================================
 
     let decoded;
@@ -72,10 +71,6 @@ export const isAuthenticated = async (req, res, next) => {
 
     // ==========================================
     // Check Token Version
-    // (catches tokens issued before a logout /
-    // password change / forced revoke bumped
-    // tokenVersion — kills them even if the JWT
-    // itself hasn't naturally expired yet)
     // ==========================================
 
     if (decoded.tv !== student.tokenVersion) {

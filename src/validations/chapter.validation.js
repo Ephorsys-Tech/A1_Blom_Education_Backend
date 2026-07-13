@@ -9,7 +9,7 @@ export const createChapterSchema = z.object({
     .string({ required_error: "Chapter name is required" })
     .trim()
     .min(1, "Chapter name cannot be empty"),
-
+    
   chapterNumber: z.coerce
     .number({
       required_error: "Chapter number is required",
@@ -24,7 +24,7 @@ export const createChapterSchema = z.object({
     .optional()
     .default(""),
 
-  course: objectIdSchema,
+  subject: objectIdSchema,
 
   sortOrder: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
@@ -55,7 +55,7 @@ export const updateChapterSchema = z.object({
     .trim()
     .optional(),
 
-  course: objectIdSchema.optional(),
+  subject: objectIdSchema.optional(),
 
   sortOrder: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
@@ -72,5 +72,5 @@ export const updateChapterSchema = z.object({
  * Validation schema for Chapter query parameters
  */
 export const getChaptersQuerySchema = z.object({
-  course: objectIdSchema,
+  subject: objectIdSchema,
 });

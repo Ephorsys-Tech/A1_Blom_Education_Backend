@@ -10,9 +10,6 @@ const app = express();
 // ---------------------------------------------
 // CORS
 // ---------------------------------------------
-// ---------------------------------------------
-// CORS
-// ---------------------------------------------
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -37,24 +34,16 @@ app.use(
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-// ---------------------------------------------
-// Test Route
-// ---------------------------------------------
-app.get("/test", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Server is working successfully 🚀",
-    timestamp: new Date(),
-  });
-});
+// Import rate limiter
 
 // ---------------------------------------------
-// API Routes
+// API Routes (Protected by global rate limiter)
 // ---------------------------------------------
 app.use("/api/v1", router);
 
 // ---------------------------------------------
 // Global Error Handler
+// ---------------------------------------------
 // ---------------------------------------------
 app.use(globalErrorHandler);
 

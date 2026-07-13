@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const batchSchema = new mongoose.Schema(
+const classesSchema = new mongoose.Schema(
   {
     // ==========================================
     // BASIC INFORMATION
@@ -8,7 +8,7 @@ const batchSchema = new mongoose.Schema(
 
     name: {
       type: String,
-      required: [true, "Batch name is required"],
+      required: [true, "Class name is required"],
       unique: true,
       trim: true,
       enum: [
@@ -62,7 +62,7 @@ const batchSchema = new mongoose.Schema(
 
     price: {
       type: Number,
-      required: [true, "Batch price is required"],
+      required: [true, "Class price is required"],
       min: [0, "Price cannot be negative"],
     },
 
@@ -91,4 +91,4 @@ const batchSchema = new mongoose.Schema(
   }
 );
 
-export default mongoose.model("Batch", batchSchema);
+export default mongoose.model("Classes", classesSchema);

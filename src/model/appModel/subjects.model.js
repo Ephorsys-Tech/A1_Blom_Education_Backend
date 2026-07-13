@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const courseSchema = new mongoose.Schema(
+const subjectsSchema = new mongoose.Schema(
   {
     // ==========================================
     // BASIC INFORMATION
@@ -8,13 +8,13 @@ const courseSchema = new mongoose.Schema(
 
     name: {
       type: String,
-      required: [true, "Course/Subject name is required"],
+      required: [true, "Subject name is required"],
       trim: true,
     },
 
     code: {
       type: String,
-      required: [true, "Course/Subject code is required"],
+      required: [true, "Subject code is required"],
       unique: true,
       trim: true,
     },
@@ -43,7 +43,7 @@ const courseSchema = new mongoose.Schema(
 
     price: {
       type: Number,
-      required: [true, "Course price is required"],
+      required: [true, "Subject price is required"],
       min: [0, "Price cannot be negative"],
     },
 
@@ -57,10 +57,10 @@ const courseSchema = new mongoose.Schema(
     // RELATIONSHIPS
     // ==========================================
 
-    batch: {
+    classes: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Batch",
-      required: [true, "Batch/Class reference is required"],
+      ref: "Classes",
+      required: [true, "Class reference is required"],
     },
 
     // ==========================================
@@ -82,4 +82,4 @@ const courseSchema = new mongoose.Schema(
   }
 );
 
-export default mongoose.model("Course", courseSchema);
+export default mongoose.model("Subject", subjectsSchema);

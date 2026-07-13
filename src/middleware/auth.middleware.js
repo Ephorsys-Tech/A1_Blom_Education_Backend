@@ -20,10 +20,11 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // ----------------------------------------------
+    // ---------------------------------------------
     // Verify Token
-    // ----------------------------------------------
+    // ---------------------------------------------
     let decoded;
+
     try {
       decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
     } catch (error) {
@@ -42,10 +43,11 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // ----------------------------------------------
+    // ---------------------------------------------
     // Find Admin
-    // ----------------------------------------------
+    // ---------------------------------------------
     const admin = await AdminModel.findById(decoded.id).select("-password");
+
     if (!admin) {
       return res.status(401).json({
         success: false,

@@ -12,7 +12,6 @@ import upload from "../../middleware/multer.middleware.js";
 import { validate } from "../../middleware/validate.middleware.js";
 import { createClassSchema, updateClassSchema } from "../../validations/classes.validation.js";
 import { paramIdSchema } from "../../validations/common.validation.js";
-import { cacheMiddleware, invalidateCacheMiddleware } from "../../utils/redisCache.js";
 
 const router = express.Router();
 
@@ -22,7 +21,7 @@ const router = express.Router();
 
 // get classes
 // get -> api/v1/classes
-router.get("/", cacheMiddleware("classes", 300), getClasses);
+router.get("/", getClasses);
 
 // ==========================================
 // ADMIN ROUTES (Protected)
@@ -34,7 +33,6 @@ router.post(
   "/",
   protect,
   authorize("admin", "app-manager"),
-  invalidateCacheMiddleware("classes"),
   upload.single("thumbnail"),
   validate({ body: createClassSchema }),
   createClass
@@ -50,7 +48,6 @@ router.put(
   "/:id",
   protect,
   authorize("admin", "app-manager"),
-  invalidateCacheMiddleware("classes"),
   upload.single("thumbnail"),
   validate({ params: paramIdSchema, body: updateClassSchema }),
   updateClass
@@ -62,7 +59,6 @@ router.delete(
   "/:id",
   protect,
   authorize("admin", "app-manager"),
-  invalidateCacheMiddleware("classes"),
   validate({ params: paramIdSchema }),
   deleteClass
 );

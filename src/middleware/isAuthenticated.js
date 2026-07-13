@@ -1,7 +1,5 @@
 import jwt from "jsonwebtoken";
 import Student from "../model/appModel/student.model.js";
-import redis from "../config/redis.config.js";
-import logger from "../config/logger.js";
 
 export const isAuthenticated = async (req, res, next) => {
   try {
@@ -21,8 +19,7 @@ export const isAuthenticated = async (req, res, next) => {
     const token = authHeader.split(" ")[1];
 
     // ==========================================
-    // Verify Token (separated so we can tell
-    // "expired" apart from "invalid/tampered")
+    // Verify Token
     // ==========================================
 
     let decoded;
@@ -49,40 +46,13 @@ export const isAuthenticated = async (req, res, next) => {
     // Find Student
     // ==========================================
 
-    const cacheKey = `cache:student:id:${decoded.id}`;
-    let student;
-
-    if (redis && redis.status === "ready") {
-      try {
-        const cachedStudent = await redis.get(cacheKey);
-        if (cachedStudent) {
-          student = JSON.parse(cachedStudent);
-          logger.info(`Session cache hit for student ID: ${decoded.id}`);
-        }
-      } catch (err) {
-        logger.error("Error retrieving student from Redis cache:", err);
-      }
-    }
+    const student = await Student.findById(decoded.id);
 
     if (!student) {
-      student = await Student.findById(decoded.id);
-
-      if (!student) {
-        return res.status(401).json({
-          success: false,
-          message: "Student not found.",
-        });
-      }
-
-      if (redis && redis.status === "ready") {
-        try {
-          // Cache student profile for 15 minutes (900 seconds)
-          await redis.set(cacheKey, JSON.stringify(student), "EX", 900);
-          logger.info(`Session cache miss for student ID: ${decoded.id}. Cached in Redis.`);
-        } catch (err) {
-          logger.error("Error saving student to Redis cache:", err);
-        }
-      }
+      return res.status(401).json({
+        success: false,
+        message: "Student not found.",
+      });
     }
 
     if (!student.isActive) {
@@ -101,10 +71,6 @@ export const isAuthenticated = async (req, res, next) => {
 
     // ==========================================
     // Check Token Version
-    // (catches tokens issued before a logout /
-    // password change / forced revoke bumped
-    // tokenVersion — kills them even if the JWT
-    // itself hasn't naturally expired yet)
     // ==========================================
 
     if (decoded.tv !== student.tokenVersion) {

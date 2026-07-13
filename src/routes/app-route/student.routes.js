@@ -17,7 +17,6 @@ import {
 import { isAuthenticated } from "../../middleware/isAuthenticated.js";
 import { validate } from "../../middleware/validate.middleware.js";
 import { studentUpdateProfile } from "../../validations/student.validation.js";
-import { authRateLimiter } from "../../middleware/rateLimiter.middleware.js";
 
 
 const router = express.Router();
@@ -27,12 +26,12 @@ const router = express.Router();
 // Student Authentication
 // ==========================================
 
-router.post("/register", authRateLimiter, registerStudent);
-router.post("/verify-mobile-otp", authRateLimiter, verifyMobileOTP);
-router.post("/resend-mobile-otp", authRateLimiter, resendMobileOTP);
-router.post("/verify-email-otp", authRateLimiter, verifyEmailOTP);
-router.post("/resend-email-otp", authRateLimiter, resendEmailOTP);
-router.post("/login", authRateLimiter, loginStudent);
+router.post("/register",  registerStudent);
+router.post("/verify-mobile-otp",  verifyMobileOTP);
+router.post("/resend-mobile-otp",  resendMobileOTP);
+router.post("/verify-email-otp",  verifyEmailOTP);
+router.post("/resend-email-otp",  resendEmailOTP);
+router.post("/login",  loginStudent);
 
 // ==========================================
 // Student Profile Picture
@@ -54,12 +53,12 @@ router.post("/logout", isAuthenticated, logoutStudent);
 router.post(
   "/delete-account/request-otp",
   isAuthenticated,
-  authRateLimiter,
+  
   requestDeleteAccountOTP,
 );
 
 // Step 2: Confirm OTP & Delete
-router.delete("/delete-account/confirm", isAuthenticated, authRateLimiter, confirmDeleteAccount);
+router.delete("/delete-account/confirm", isAuthenticated,  confirmDeleteAccount);
 
 // ==========================================
 // Enrollment Route

@@ -1,7 +1,5 @@
 import jwt from "jsonwebtoken";
 import AdminModel from "../model/admin.model.js";
-import redis from "../config/redis.config.js";
-import logger from "../config/logger.js";
 
 const protect = async (req, res, next) => {
   try {
@@ -22,10 +20,11 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // ----------------------------------------------
+    // ---------------------------------------------
     // Verify Token
-    // ----------------------------------------------
+    // ---------------------------------------------
     let decoded;
+
     try {
       decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
     } catch (error) {
@@ -44,42 +43,16 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // ----------------------------------------------
+    // ---------------------------------------------
     // Find Admin
-    // ----------------------------------------------
-    const cacheKey = `cache:admin:id:${decoded.id}`;
-    let admin;
-
-    if (redis && redis.status === 'ready') {
-      try {
-        const cachedAdmin = await redis.get(cacheKey);
-        if (cachedAdmin) {
-          admin = JSON.parse(cachedAdmin);
-          logger.info(`Session cache hit for admin ID: ${decoded.id}`);
-        }
-      } catch (err) {
-        logger.error(`Error reading admin session from Redis:`, err);
-      }
-    }
+    // ---------------------------------------------
+    const admin = await AdminModel.findById(decoded.id).select("-password");
 
     if (!admin) {
-      admin = await AdminModel.findById(decoded.id).select("-password");
-      if (!admin) {
-        return res.status(401).json({
-          success: false,
-          message: "Admin or Manager not found.",
-        });
-      }
-
-      if (redis && redis.status === 'ready') {
-        try {
-          // Cache session for 10 minutes
-          await redis.set(cacheKey, JSON.stringify(admin), 'EX', 600);
-          logger.info(`Session cache miss for admin ID: ${decoded.id}. Cached in Redis.`);
-        } catch (err) {
-          logger.error(`Error writing admin session to Redis:`, err);
-        }
-      }
+      return res.status(401).json({
+        success: false,
+        message: "Admin or Manager not found.",
+      });
     }
 
     if (admin.isBlocked) {

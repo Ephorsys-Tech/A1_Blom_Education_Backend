@@ -4,7 +4,6 @@ import router from "./routes/index.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import { globalErrorHandler } from "./middleware/globalErrorHandler.js";
-import { apiRateLimiter } from "./middleware/rateLimiter.middleware.js";
 
 const app = express();
 
@@ -40,7 +39,7 @@ app.use(morgan("dev"));
 // ---------------------------------------------
 // API Routes (Protected by global rate limiter)
 // ---------------------------------------------
-app.use("/api/v1", apiRateLimiter, router);
+app.use("/api/v1", router);
 
 // ---------------------------------------------
 // Global Error Handler

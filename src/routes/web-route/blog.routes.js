@@ -7,7 +7,6 @@ import {
 } from "../../controllers/webController/blog.controller.js";
 import protect from "../../middleware/auth.middleware.js";
 import upload from "../../middleware/multer.middleware.js";
-import { cacheMiddleware, invalidateCacheMiddleware } from "../../utils/redisCache.js";
 
 const router = express.Router();
 
@@ -15,11 +14,11 @@ const router = express.Router();
 // In the chachedMiddleware the the first params is the name with the based url and the second is the total time in second for expiring the key....
 // if the key is the same the it will return the cached data
 // if the key is different the it will return the new data
-router.get("/", cacheMiddleware("blogs", 100), getAllBlogs);
-router.get("/:id", cacheMiddleware("blogs", 300), getBlogById);
+router.get("/", getAllBlogs);
+router.get("/:id", getBlogById);
 
 // Admin / protected routes
-router.post("/", protect, invalidateCacheMiddleware("blogs"), upload.single("image"), createBlog);
-router.delete("/:id", protect, invalidateCacheMiddleware("blogs"), deleteBlog);
+router.post("/", protect, upload.single("image"), createBlog);
+router.delete("/:id", protect, deleteBlog);
 
 export default router;

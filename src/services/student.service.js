@@ -9,7 +9,6 @@ import { verifyOTP } from "../utils/verifyOTP.js";
 import { sendEmailOTP } from "../utils/sendEmailOTP.js";
 import { sendCongratulationMail } from "../utils/sendCongratulationMail.js";
 import jwt from "jsonwebtoken";
-import { deleteCachedData } from "../utils/redisCache.js";
 
 // ==========================================
 // Register Student Service
@@ -411,7 +410,6 @@ export const updateProfileService = async (studentId, data) => {
 
   await student.save();
 
-  await deleteCachedData(`cache:student:id:${studentId}`);
 
   return Student.findById(studentId)
     .populate("selectedClass")
@@ -449,7 +447,7 @@ export const logoutStudentService = async (studentId) => {
 
   await student.save();
 
-  await deleteCachedData(`cache:student:id:${studentId}`);
+
 
   return true;
 };
@@ -532,7 +530,6 @@ export const confirmDeleteAccountService = async (studentId, otp) => {
   // Hard Delete Account
   await Student.findByIdAndDelete(studentId);
 
-  await deleteCachedData(`cache:student:id:${studentId}`);
 
   return true;
 };
@@ -654,7 +651,6 @@ export const enrollStudentService = async (studentId, data) => {
 
   await student.save();
 
-  await deleteCachedData(`cache:student:id:${studentId}`);
 
   return Student.findById(studentId)
     .populate("selectedClass")

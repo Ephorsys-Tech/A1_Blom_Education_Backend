@@ -8,15 +8,20 @@ export const isAuthenticated = async (req, res, next) => {
     // ==========================================
 
     const authHeader = req.headers.authorization;
+    let token;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    } else if (req.cookies && req.cookies.accessToken) {
+      token = req.cookies.accessToken;
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         message: "Access token is required.",
       });
     }
-
-    const token = authHeader.split(" ")[1];
 
     // ==========================================
     // Verify Token
@@ -59,13 +64,6 @@ export const isAuthenticated = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Account is inactive.",
-      });
-    }
-
-    if (student.isBlocked) {
-      return res.status(403).json({
-        success: false,
-        message: "Account has been blocked.",
       });
     }
 

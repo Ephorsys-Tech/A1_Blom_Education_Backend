@@ -1,15 +1,13 @@
 import express from "express";
 import {
-  confirmDeleteAccount,
   getMyProfile,
   loginStudent,
   logoutStudent,
   registerStudent,
-  requestDeleteAccountOTP,
   resendMobileOTP,
   updateProfile,
   verifyMobileOTP,
-  enrollStudent,
+  // enrollStudent,
   refreshAccessToken,
   verifyEmailOTP,
   resendEmailOTP
@@ -48,22 +46,10 @@ router.put("/profile", isAuthenticated, validate({ body: studentUpdateProfile })
 // LogOut Profile
 // ==========================================
 router.post("/logout", isAuthenticated, logoutStudent);
-
-// Step 1: Send OTP
-router.post(
-  "/delete-account/request-otp",
-  isAuthenticated,
-  
-  requestDeleteAccountOTP,
-);
-
-// Step 2: Confirm OTP & Delete
-router.delete("/delete-account/confirm", isAuthenticated,  confirmDeleteAccount);
-
 // ==========================================
 // Enrollment Route
 // ==========================================
-router.post("/enroll", isAuthenticated, enrollStudent);
+// router.post("/enroll", isAuthenticated, enrollStudent);
 
 // ==========================================
 // Refresh Access Token

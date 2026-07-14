@@ -171,7 +171,7 @@ export const getLecturesService = async (chapterId, studentId) => {
     (item) => item.classes.toString() === subjectObj.classes.toString()
   );
 
-  const isEnrolled = hasSubjectEnrollment || hasClassEnrollment;
+  const isEnrolled = hasSubjectEnrollment || hasClassEnrollment; 
 
   // Fetch active lectures
   const lectures = await Lecture.find({ chapter: chapterId, isActive: true })

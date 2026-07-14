@@ -4,7 +4,6 @@ import {
   updateClassService,
   deleteClassService,
   getClassesService,
-  getAdminClassesService,
   getClassByIdService,
 } from "../../services/classes.service.js";
 
@@ -47,7 +46,7 @@ export const deleteClass = async (req, res, next) => {
 };
 
 // ==========================================
-// GET ACTIVE CLASSES (Public / Students)
+// GET ACTIVE CLASSES
 // ==========================================
 export const getClasses = async (req, res, next) => {
   try {
@@ -58,17 +57,6 @@ export const getClasses = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// GET ALL CLASSES (Admin Only)
-// ==========================================
-export const getAdminClasses = async (req, res, next) => {
-  try {
-    const classesList = await getAdminClassesService();
-    return respond(res, 200, "All classes fetched successfully.", classesList);
-  } catch (error) {
-    next(error);
-  }
-};
 
 // ==========================================
 // GET CLASS BY ID (Public / Students)

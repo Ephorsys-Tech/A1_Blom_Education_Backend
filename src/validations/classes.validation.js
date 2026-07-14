@@ -1,14 +1,7 @@
 import { z } from "zod";
 
-/**
- * Validation schema for Class creation
- */
+// Validation schema for Class creation
 export const createClassSchema = z.object({
-  name: z.enum(["Class 6", "Class 7", "Class 8", "Class 9", "Class 10"], {
-    required_error: "Class name is required",
-    invalid_type_error: "Class name must be Class 6, Class 7, Class 8, Class 9, or Class 10",
-  }),
-
   classNumber: z.coerce
     .number({
       required_error: "Class number is required",
@@ -32,27 +25,19 @@ export const createClassSchema = z.object({
     })
     .min(0, "Price cannot be negative"),
 
-  discountPrice: z.preprocess(
-    (val) => (val === "" || val === undefined ? undefined : val),
-    z.coerce.number().min(0, "Discount price cannot be negative").optional()
+  discountPercent: z.preprocess(
+    (val) => (val === "" || val === undefined ? 0 : val),
+    z.coerce.number().min(0).max(100),
   ),
 
   sortOrder: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
-    z.coerce.number().int("Sort order must be an integer").optional()
+    z.coerce.number().int("Sort order must be an integer").optional(),
   ),
 });
 
-/**
- * Validation schema for Class updates
- */
+//  Validation schema for Class updates
 export const updateClassSchema = z.object({
-  name: z
-    .enum(["Class 6", "Class 7", "Class 8", "Class 9", "Class 10"], {
-      invalid_type_error: "Class name must be Class 6, Class 7, Class 8, Class 9, or Class 10",
-    })
-    .optional(),
-
   classNumber: z.coerce
     .number({
       invalid_type_error: "Class number must be a valid number",
@@ -75,18 +60,18 @@ export const updateClassSchema = z.object({
     .min(0, "Price cannot be negative")
     .optional(),
 
-  discountPrice: z.preprocess(
-    (val) => (val === "" || val === undefined ? undefined : val),
-    z.coerce.number().min(0, "Discount price cannot be negative").optional()
+  discountPercent: z.preprocess(
+    (val) => (val === "" || val === undefined ? 0 : val),
+    z.coerce.number().min(0).max(100),
   ),
 
   sortOrder: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
-    z.coerce.number().int("Sort order must be an integer").optional()
+    z.coerce.number().int("Sort order must be an integer").optional(),
   ),
 
   isActive: z.preprocess(
     (val) => (val === "true" ? true : val === "false" ? false : val),
-    z.boolean().optional()
+    z.boolean().optional(),
   ),
 });

@@ -1,29 +1,25 @@
 import Classes from "../model/appModel/classes.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.config.js";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "../config/cloudinary.config.js";
 
-// ==========================================
 // CREATE CLASS Service
-// ==========================================
 export const createClassService = async (data, file) => {
-  const { name, classNumber, description, price, discountPrice, sortOrder } = data;
+  const { classNumber, description, price, discountPercent, sortOrder } = data;
 
-  if (!name || !classNumber || price === undefined) {
-    const error = new Error("Name, classNumber, and price are required fields.");
+  if (classNumber === undefined || price === undefined) {
+    const error = new Error(
+      "classNumber, description, and price are required fields.",
+    );
     error.statusCode = 400;
     throw error;
   }
 
-  // Check if class name or classNumber already exists
-  const nameExists = await Classes.findOne({ name });
-  if (nameExists) {
-    const error = new Error(`Class name '${name}' already exists.`);
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const classExists = await Classes.findOne({ classNumber });
-  if (classExists) {
-    const error = new Error(`Class ${classNumber} already exists.`);
+  // Check if class classNumber already exists
+  const classnumberExists = await Classes.findOne({ classNumber });
+  if (classnumberExists) {
+    const error = new Error(`Class number '${classNumber}' already exists.`);
     error.statusCode = 400;
     throw error;
   }
@@ -31,19 +27,25 @@ export const createClassService = async (data, file) => {
   let thumbnail = { public_id: "", url: "" };
 
   if (file) {
-    const uploadResult = await uploadToCloudinary(file.buffer, "classes", "image");
+    const uploadResult = await uploadToCloudinary(
+      file.buffer,
+      "classes",
+      "image",
+    );
     thumbnail = {
       public_id: uploadResult.publicId,
       url: uploadResult.url,
     };
   }
 
+  const finalPrice = price - (price * (discountPercent || 0)) / 100;
+
   const classes = await Classes.create({
-    name,
     classNumber,
     description: description || "",
     price,
-    discountPrice: discountPrice || 0,
+    discountPercent,
+    discountPrice: finalPrice || 0,
     sortOrder: sortOrder || 0,
     thumbnail,
   });
@@ -51,11 +53,15 @@ export const createClassService = async (data, file) => {
   return classes;
 };
 
-// ==========================================
 // UPDATE CLASS Service
-// ==========================================
 export const updateClassService = async (id, data, file) => {
-  const { name, classNumber, description, price, discountPrice, sortOrder, isActive } = data;
+  const {
+    classNumber,
+    description,
+    price,
+    discountPercent,
+    sortOrder,
+  } = data;
 
   const classes = await Classes.findById(id);
   if (!classes) {
@@ -64,22 +70,13 @@ export const updateClassService = async (id, data, file) => {
     throw error;
   }
 
-  // Check uniqueness if name is changed
-  if (name && name !== classes.name) {
-    const nameExists = await Classes.findOne({ name });
-    if (nameExists) {
-      const error = new Error(`Class name '${name}' already exists.`);
-      error.statusCode = 400;
-      throw error;
-    }
-    classes.name = name;
-  }
-
   // Check uniqueness if classNumber is changed
-  if (classNumber && Number(classNumber) !== classes.classNumber) {
-    const classExists = await Classes.findOne({ classNumber });
-    if (classExists) {
-      const error = new Error(`Class ${classNumber} already exists.`);
+  if (classNumber && classNumber !== classes.classNumber) {
+    const nameExists = await Classes.findOne({ classNumber });
+    if (nameExists) {
+      const error = new Error(
+        `Class classNumber '${classNumber}' already exists.`,
+      );
       error.statusCode = 400;
       throw error;
     }
@@ -88,16 +85,23 @@ export const updateClassService = async (id, data, file) => {
 
   if (description !== undefined) classes.description = description;
   if (price !== undefined) classes.price = price;
-  if (discountPrice !== undefined) classes.discountPrice = discountPrice;
   if (sortOrder !== undefined) classes.sortOrder = sortOrder;
-  if (isActive !== undefined) classes.isActive = isActive;
+  if (discountPercent !== undefined) {
+    classes.discountPercent = discountPercent;
+    classes.discountPrice =
+      classes.price - (classes.price * discountPercent || 0) / 100;
+  }
 
   if (file) {
     // Delete old thumbnail if it exists
     if (classes.thumbnail && classes.thumbnail.public_id) {
       await deleteFromCloudinary(classes.thumbnail.public_id, "image");
     }
-    const uploadResult = await uploadToCloudinary(file.buffer, "classes", "image");
+    const uploadResult = await uploadToCloudinary(
+      file.buffer,
+      "classes",
+      "image",
+    );
     classes.thumbnail = {
       public_id: uploadResult.publicId,
       url: uploadResult.url,
@@ -108,9 +112,7 @@ export const updateClassService = async (id, data, file) => {
   return classes;
 };
 
-// ==========================================
 // DELETE CLASS Service
-// ==========================================
 export const deleteClassService = async (id) => {
   const classes = await Classes.findById(id);
   if (!classes) {
@@ -128,25 +130,16 @@ export const deleteClassService = async (id) => {
   return true;
 };
 
-// ==========================================
 // GET ACTIVE CLASSES Service
-// ==========================================
 export const getClassesService = async () => {
-  const classesList = await Classes.find({ isActive: true }).sort({ sortOrder: 1 });
+  const classesList = await Classes.find({ isActive: true }).sort({
+    sortOrder: 1,
+  });
   return classesList;
 };
 
-// ==========================================
-// GET ALL CLASSES (Admin) Service
-// ==========================================
-export const getAdminClassesService = async () => {
-  const classesList = await Classes.find().sort({ sortOrder: 1 });
-  return classesList;
-};
 
-// ==========================================
 // GET CLASS BY ID Service
-// ==========================================
 export const getClassByIdService = async (id) => {
   const classes = await Classes.findById(id);
   if (!classes) {

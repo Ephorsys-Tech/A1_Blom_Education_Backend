@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { mongo } from "mongoose";
 
 const classesSchema = new mongoose.Schema(
   {
@@ -6,26 +6,11 @@ const classesSchema = new mongoose.Schema(
     // BASIC INFORMATION
     // ==========================================
 
-    name: {
-      type: String,
-      required: [true, "Class name is required"],
-      unique: true,
-      trim: true,
-      enum: [
-        "Class 6",
-        "Class 7",
-        "Class 8",
-        "Class 9",
-        "Class 10",
-      ],
-    },
-
     classNumber: {
       type: Number,
       required: [true, "Class number is required"],
       unique: true,
-      min: 6,
-      max: 10,
+      enum: [6, 7, 8, 9, 10],
     },
 
     description: {
@@ -68,27 +53,43 @@ const classesSchema = new mongoose.Schema(
 
     discountPrice: {
       type: Number,
+      min:0,
+    },
+
+    discountPercent: {
+      type: Number,
       default: 0,
-      min: [0, "Discount price cannot be negative"],
+      min: 0,
+      max: 100
     },
 
     // ==========================================
     // METADATA
     // ==========================================
 
-    totalSubjects: {
-      type: Number,
-      default: 0,
-    },
+    subjects: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Subject",
+      },
+    ],
 
-    totalStudents: {
-      type: Number,
-      default: 0,
-    },
+    students: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Students",
+      },
+    ],
+
+    // Subscription relation should be here..
+    subscriptions: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subscription", // It may change according to the name declared for the razorpay schema name
+    }],
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export default mongoose.model("Classes", classesSchema);

@@ -4,7 +4,6 @@ import {
   updateClass,
   deleteClass,
   getClasses,
-  getAdminClasses,
   getClassById,
 } from "../../controllers/appController/classes.controller.js";
 import protect, { authorize } from "../../middleware/auth.middleware.js";
@@ -15,17 +14,21 @@ import { paramIdSchema } from "../../validations/common.validation.js";
 
 const router = express.Router();
 
-// ==========================================
-// PUBLIC ROUTES
-// ==========================================
-
+// PUBLIC ROUTES For student and admin also
 // get classes
 // get -> api/v1/classes
 router.get("/", getClasses);
 
-// ==========================================
+
+// get class By Id
+// get class -> api/v1/class/:id
+router.get(
+  "/:id",
+  getClassById
+);
+
+// ---------------------------------------------------------------------//
 // ADMIN ROUTES (Protected)
-// ==========================================
 
 // Create Classes
 // POST -> api/v1/classes   
@@ -37,10 +40,6 @@ router.post(
   validate({ body: createClassSchema }),
   createClass
 );
-
-// get classes for admin
-// get -> api/v1/classes/admin/all
-router.get("/admin/all", protect, authorize("admin", "app-manager"), getAdminClasses);
 
 // update class
 // put -> api/v1/classes/:id
@@ -62,5 +61,8 @@ router.delete(
   validate({ params: paramIdSchema }),
   deleteClass
 );
+
+
+
 
 export default router;

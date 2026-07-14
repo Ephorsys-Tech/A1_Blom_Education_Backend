@@ -1,7 +1,10 @@
 import ClassModel from "../../model/webModel/class.model.js";
 import SubjectModel from "../../model/webModel/subject.model.js";
 import ChapterModel from "../../model/webModel/chapter.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../../config/cloudinary.config.js";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "../../config/cloudinary.config.js";
 import { z } from "zod";
 
 // ==========================================
@@ -11,7 +14,9 @@ import { z } from "zod";
 const CreateClassSchema = z.object({
   name: z.string().min(2, "Class name must be at least 2 characters"),
   numericValue: z.preprocess((val) => Number(val), z.number().min(6).max(10)),
-  isPublished: z.preprocess((val) => val === "true" || val === true, z.boolean()).optional(),
+  isPublished: z
+    .preprocess((val) => val === "true" || val === true, z.boolean())
+    .optional(),
   order: z.preprocess((val) => Number(val), z.number()).optional(),
 });
 
@@ -20,21 +25,29 @@ const UpdateClassSchema = CreateClassSchema.partial();
 const CreateSubjectSchema = z.object({
   classId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Class ID"),
   name: z.string().min(2, "Subject name must be at least 2 characters"),
-  isPublished: z.preprocess((val) => val === "true" || val === true, z.boolean()).optional(),
+  isPublished: z
+    .preprocess((val) => val === "true" || val === true, z.boolean())
+    .optional(),
   order: z.preprocess((val) => Number(val), z.number()).optional(),
 });
 
-const UpdateSubjectSchema = CreateSubjectSchema.omit({ classId: true }).partial();
+const UpdateSubjectSchema = CreateSubjectSchema.omit({
+  classId: true,
+}).partial();
 
 const CreateChapterSchema = z.object({
   subjectId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Subject ID"),
   title: z.string().min(2, "Chapter title must be at least 2 characters"),
   notes: z.string().optional(),
-  isPublished: z.preprocess((val) => val === "true" || val === true, z.boolean()).optional(),
+  isPublished: z
+    .preprocess((val) => val === "true" || val === true, z.boolean())
+    .optional(),
   order: z.preprocess((val) => Number(val), z.number()).optional(),
 });
 
-const UpdateChapterSchema = CreateChapterSchema.omit({ subjectId: true }).partial();
+const UpdateChapterSchema = CreateChapterSchema.omit({
+  subjectId: true,
+}).partial();
 
 // ==========================================
 // CLASS CONTROLLERS
@@ -67,7 +80,11 @@ export const createClass = async (req, res) => {
     let imagePublicId = null;
 
     if (req.file) {
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "classes", "auto");
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        "classes",
+        "auto",
+      );
       imageUrl = uploadResult.url;
       imagePublicId = uploadResult.publicId;
     }
@@ -99,7 +116,13 @@ export const createClass = async (req, res) => {
 // Get All Classes (Admin with pagination/search/sort)
 export const getAllClasses = async (req, res) => {
   try {
-    const { search = "", page = 1, limit = 10, sortBy = "order", sortOrder = "asc" } = req.query;
+    const {
+      search = "",
+      page = 1,
+      limit = 10,
+      sortBy = "order",
+      sortOrder = "asc",
+    } = req.query;
 
     const query = {};
     if (search) {
@@ -202,7 +225,11 @@ export const updateClass = async (req, res) => {
       }
 
       // Upload new image
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "classes", "auto");
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        "classes",
+        "auto",
+      );
       classData.imageUrl = uploadResult.url;
       classData.imagePublicId = uploadResult.publicId;
     }
@@ -242,7 +269,10 @@ export const deleteClass = async (req, res) => {
       try {
         await deleteFromCloudinary(classData.imagePublicId, "image");
       } catch (cloudinaryErr) {
-        console.error("Error deleting class image from Cloudinary:", cloudinaryErr);
+        console.error(
+          "Error deleting class image from Cloudinary:",
+          cloudinaryErr,
+        );
       }
     }
 
@@ -254,7 +284,10 @@ export const deleteClass = async (req, res) => {
         try {
           await deleteFromCloudinary(subject.pdfPublicId, "image");
         } catch (cloudinaryErr) {
-          console.error("Error deleting subject PDF from Cloudinary:", cloudinaryErr);
+          console.error(
+            "Error deleting subject PDF from Cloudinary:",
+            cloudinaryErr,
+          );
         }
       }
       // Delete chapters of this subject
@@ -269,7 +302,8 @@ export const deleteClass = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Class and all associated subjects, PDFs, and chapters deleted successfully",
+      message:
+        "Class and all associated subjects, PDFs, and chapters deleted successfully",
     });
   } catch (error) {
     console.error("Delete Class Error:", error);
@@ -289,6 +323,7 @@ export const deleteClass = async (req, res) => {
 export const createSubject = async (req, res) => {
   try {
     const result = CreateSubjectSchema.safeParse(req.body);
+
     if (!result.success) {
       return res.status(400).json({
         success: false,
@@ -301,6 +336,7 @@ export const createSubject = async (req, res) => {
 
     // Check if class exists
     const classExists = await ClassModel.findById(classId);
+
     if (!classExists) {
       return res.status(404).json({
         success: false,
@@ -309,7 +345,11 @@ export const createSubject = async (req, res) => {
     }
 
     // Check duplicate subject name in this class
-    const duplicate = await SubjectModel.findOne({ classId, name });
+    const duplicate = await SubjectModel.findOne({
+      classId,
+      name,
+    });
+
     if (duplicate) {
       return res.status(400).json({
         success: false,
@@ -320,7 +360,7 @@ export const createSubject = async (req, res) => {
     let pdfUrl = null;
     let pdfPublicId = null;
 
-    // Upload PDF to Cloudinary if file provided
+    // Upload PDF to Cloudinary
     if (req.file) {
       if (req.file.mimetype !== "application/pdf") {
         return res.status(400).json({
@@ -328,7 +368,13 @@ export const createSubject = async (req, res) => {
           message: "Only PDF files are allowed for textbook",
         });
       }
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "textbooks", "image");
+
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        "textbooks",
+        "raw", // ✅ PDF ke liye raw
+      );
+
       pdfUrl = uploadResult.url;
       pdfPublicId = uploadResult.publicId;
     }
@@ -349,6 +395,7 @@ export const createSubject = async (req, res) => {
     });
   } catch (error) {
     console.error("Create Subject Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Internal server error while creating subject",
@@ -360,7 +407,14 @@ export const createSubject = async (req, res) => {
 // Get All Subjects (Admin with pagination/search/sort/filter)
 export const getAllSubjects = async (req, res) => {
   try {
-    const { classId, search = "", page = 1, limit = 10, sortBy = "order", sortOrder = "asc" } = req.query;
+    const {
+      classId,
+      search = "",
+      page = 1,
+      limit = 10,
+      sortBy = "order",
+      sortOrder = "asc",
+    } = req.query;
 
     const query = {};
     if (classId) {
@@ -401,7 +455,10 @@ export const getAllSubjects = async (req, res) => {
 export const getSubjectById = async (req, res) => {
   try {
     const { id } = req.params;
-    const subject = await SubjectModel.findById(id).populate("classId", "name numericValue");
+    const subject = await SubjectModel.findById(id).populate(
+      "classId",
+      "name numericValue",
+    );
     if (!subject) {
       return res.status(404).json({
         success: false,
@@ -446,7 +503,10 @@ export const updateSubject = async (req, res) => {
 
     // Check duplicate name in same class
     if (result.data.name && result.data.name !== subject.name) {
-      const duplicate = await SubjectModel.findOne({ classId: subject.classId, name: result.data.name });
+      const duplicate = await SubjectModel.findOne({
+        classId: subject.classId,
+        name: result.data.name,
+      });
       if (duplicate) {
         return res.status(400).json({
           success: false,
@@ -474,7 +534,11 @@ export const updateSubject = async (req, res) => {
       }
 
       // Upload new PDF
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "textbooks", "image");
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        "textbooks",
+        "image",
+      );
       subject.pdfUrl = uploadResult.url;
       subject.pdfPublicId = uploadResult.publicId;
     }
@@ -561,7 +625,8 @@ export const deleteSubject = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Subject and all associated chapters and textbook PDF deleted successfully",
+      message:
+        "Subject and all associated chapters and textbook PDF deleted successfully",
     });
   } catch (error) {
     console.error("Delete Subject Error:", error);
@@ -635,7 +700,14 @@ export const createChapter = async (req, res) => {
 // Get All Chapters (Admin with pagination/search/sort/filter)
 export const getAllChapters = async (req, res) => {
   try {
-    const { subjectId, search = "", page = 1, limit = 10, sortBy = "order", sortOrder = "asc" } = req.query;
+    const {
+      subjectId,
+      search = "",
+      page = 1,
+      limit = 10,
+      sortBy = "order",
+      sortOrder = "asc",
+    } = req.query;
 
     const query = {};
     if (subjectId) {
@@ -736,7 +808,10 @@ export const updateChapter = async (req, res) => {
 
     // Check duplicate title in same subject
     if (result.data.title && result.data.title !== chapter.title) {
-      const duplicate = await ChapterModel.findOne({ subjectId: chapter.subjectId, title: result.data.title });
+      const duplicate = await ChapterModel.findOne({
+        subjectId: chapter.subjectId,
+        title: result.data.title,
+      });
       if (duplicate) {
         return res.status(400).json({
           success: false,
@@ -798,7 +873,10 @@ export const deleteChapter = async (req, res) => {
 // Get Public Classes (only published, sorted by order)
 export const getPublicClasses = async (req, res) => {
   try {
-    const classes = await ClassModel.find({ isPublished: true }).sort({ order: 1, numericValue: 1 });
+    const classes = await ClassModel.find({ isPublished: true }).sort({
+      order: 1,
+      numericValue: 1,
+    });
     return res.status(200).json({
       success: true,
       data: classes,
@@ -824,7 +902,10 @@ export const getPublicSubjects = async (req, res) => {
       });
     }
 
-    const subjects = await SubjectModel.find({ classId, isPublished: true }).sort({ order: 1, name: 1 });
+    const subjects = await SubjectModel.find({
+      classId,
+      isPublished: true,
+    }).sort({ order: 1, name: 1 });
     return res.status(200).json({
       success: true,
       data: subjects,
@@ -872,7 +953,10 @@ export const getPublicChapters = async (req, res) => {
 export const getPublicChapterDetail = async (req, res) => {
   try {
     const { id } = req.params;
-    const chapter = await ChapterModel.findOne({ _id: id, isPublished: true }).populate({
+    const chapter = await ChapterModel.findOne({
+      _id: id,
+      isPublished: true,
+    }).populate({
       path: "subjectId",
       select: "name pdfUrl classId",
       populate: {

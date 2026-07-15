@@ -2,10 +2,6 @@ import mongoose, { mongo } from "mongoose";
 
 const classesSchema = new mongoose.Schema(
   {
-    // ==========================================
-    // BASIC INFORMATION
-    // ==========================================
-
     classNumber: {
       type: Number,
       required: [true, "Class number is required"],
@@ -30,10 +26,6 @@ const classesSchema = new mongoose.Schema(
         default: "",
       },
     },
-
-    // ==========================================
-    // SETTINGS
-    // ==========================================
 
     isActive: {
       type: Boolean,
@@ -63,29 +55,12 @@ const classesSchema = new mongoose.Schema(
       max: 100
     },
 
-    // ==========================================
-    // METADATA
-    // ==========================================
-
     subjects: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Subject",
       },
     ],
-
-    students: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Students",
-      },
-    ],
-
-    // Subscription relation should be here..
-    subscriptions: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Subscription", // It may change according to the name declared for the razorpay schema name
-    }],
   },
   {
     timestamps: true,

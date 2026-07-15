@@ -4,7 +4,6 @@ import {
   updateSubjectService,
   deleteSubjectService,
   getSubjectsService,
-  getAdminSubjectsService,
   getSubjectByIdService,
 } from "../../services/subjects.service.js";
 
@@ -13,7 +12,7 @@ import {
 // ==========================================
 export const createSubject = async (req, res, next) => {
   try {
-    const subject = await createSubjectService(req.body, req.file);
+    const subject = await createSubjectService(req.body);
     return respond(res, 201, "Subject created successfully.", subject);
   } catch (error) {
     next(error);
@@ -26,7 +25,8 @@ export const createSubject = async (req, res, next) => {
 export const updateSubject = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const subject = await updateSubjectService(id, req.body, req.file);
+    const subject = await updateSubjectService(id, req.body);
+    console.log("body",req.body)
     return respond(res, 200, "Subject updated successfully.", subject);
   } catch (error) {
     next(error);
@@ -53,18 +53,6 @@ export const getSubjects = async (req, res, next) => {
   try {
     const subjects = await getSubjectsService(req.query.classes);
     return respond(res, 200, "Subjects fetched successfully.", subjects);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ==========================================
-// GET ALL SUBJECTS (Admin Only)
-// ==========================================
-export const getAdminSubjects = async (req, res, next) => {
-  try {
-    const subjects = await getAdminSubjectsService(req.query.classes);
-    return respond(res, 200, "All subjects fetched successfully.", subjects);
   } catch (error) {
     next(error);
   }

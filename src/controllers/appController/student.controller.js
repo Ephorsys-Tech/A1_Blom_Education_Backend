@@ -11,10 +11,17 @@ import {
   refreshAccessTokenService,
   verifyEmailOTPService,
   resendEmailOTPService,
+  loginStudentWithPasswordService,
+  forgotPasswordStudentService,
+  resetPasswordStudentService,
 } from "../../services/student.service.js";
 import {
   studentLogin,
   studentRegister,
+  studentLoginWithPassword,
+  studentLoginWithOTP,
+  studentForgotPassword,
+  studentResetPassword,
 } from "../../validations/student.validation.js";
 
 // ==========================================
@@ -128,17 +135,30 @@ export const resendEmailOTP = async (req, res, next) => {
 // ==========================================
 export const loginStudent = async (req, res, next) => {
   try {
-    const result = studentLogin.safeParse(req.body);
+    const isPasswordLogin = req.body.password !== undefined;
+    let loginResult;
 
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: result.error.format(),
-      });
+    if (isPasswordLogin) {
+      const result = studentLoginWithPassword.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: result.error.format(),
+        });
+      }
+      loginResult = await loginStudentWithPasswordService(result.data);
+    } else {
+      const result = studentLoginWithOTP.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: result.error.format(),
+        });
+      }
+      loginResult = await loginStudentService(result.data);
     }
-
-    const loginResult = await loginStudentService(result.data);
 
     if (loginResult.otpRequired) {
       return res.status(200).json({
@@ -153,18 +173,18 @@ export const loginStudent = async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: Number(process.env.ACCESS_TOKEN_EXPIRE),
+      maxAge: 15 * 60 * 1000,
     };
 
+    // Cookie Options for Student Refresh Token (30d)
     const refreshCookieOption = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: Number(process.env.REFRESH_TOKEN_EXPIRE),
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     };
 
-
-    // Set cookies in response if login succeeded directly
+    // Set cookies in response
     res.cookie("accessToken", loginResult.accessToken, accessCookieOption);
     res.cookie("refreshToken", loginResult.refreshToken, refreshCookieOption);
 
@@ -174,6 +194,56 @@ export const loginStudent = async (req, res, next) => {
       accessToken: loginResult.accessToken,
       refreshToken: loginResult.refreshToken,
       student: loginResult.student,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+// ==========================================
+// Forgot Password (Student)
+// ==========================================
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const result = studentForgotPassword.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.format(),
+      });
+    }
+
+    const serviceResult = await forgotPasswordStudentService(result.data.mobile);
+    return res.status(200).json({
+      success: true,
+      message: serviceResult.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ==========================================
+// Reset Password (Student)
+// ==========================================
+export const resetPassword = async (req, res, next) => {
+  try {
+    const result = studentResetPassword.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.format(),
+      });
+    }
+
+    const serviceResult = await resetPasswordStudentService(result.data);
+    return res.status(200).json({
+      success: true,
+      message: serviceResult.message,
     });
   } catch (error) {
     next(error);

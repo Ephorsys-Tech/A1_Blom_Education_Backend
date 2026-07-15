@@ -18,9 +18,9 @@ export const registerStudentService = async (data) => {
   const {
     fullName,
     email,
+    password,
     mobile,
     parentsMobile,
-    password,
     address,
     pinCode,
     dob,
@@ -77,6 +77,7 @@ export const registerStudentService = async (data) => {
   const pendingStudent = await PendingStudent.create({
     fullName,
     email,
+    password,
     mobile,
     parentsMobile,
     address,
@@ -87,7 +88,7 @@ export const registerStudentService = async (data) => {
     selectedClass,
     acceptedTerms,
     acceptedTermsAt: new Date(),
-
+    
     emailVerificationOTP: emailOTP,
     emailVerificationOTPExpires: otpExpiry,
   });
@@ -166,6 +167,7 @@ export const verifyMobileOTPService = async (data) => {
     const student = await Student.create({
       fullName: pendingStudent.fullName,
       email: pendingStudent.email,
+      password: pendingStudent.password,
       mobile: pendingStudent.mobile,
       parentsMobile: pendingStudent.parentsMobile,
       address: pendingStudent.address,
@@ -523,6 +525,138 @@ export const loginStudentService = async (data) => {
     },
   };
 };
+
+// ==========================================
+// LOGIN WITH PASSWORD Student Service
+// ==========================================
+export const loginStudentWithPasswordService = async (data) => {
+  const { mobile, password } = data;
+
+  if (!mobile || !password) {
+    const error = new Error("Mobile and password are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const student = await Student.findOne({ mobile }).select(
+    "+password +refreshToken"
+  );
+
+  if (!student) {
+    const error = new Error("Invalid Mobile Number or Password.");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (!student.isActive) {
+    const error = new Error("Your account is inactive.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const isMatch = await student.comparePassword(password);
+  if (!isMatch) {
+    const error = new Error("Invalid Mobile Number or Password.");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  student.isMobileVerified = true;
+  student.isEmailVerified = true;
+
+  // Invalidate any other active sessions/devices for single-device login
+  student.tokenVersion = (student.tokenVersion || 0) + 1;
+
+  const accessToken = generateAccessToken(student);
+  const refreshToken = generateRefreshToken(student._id);
+
+  student.refreshToken = refreshToken;
+  student.lastLogin = new Date();
+  student.loginCount += 1;
+
+  await student.save();
+
+  return {
+    accessToken,
+    refreshToken,
+    student: {
+      id: student._id,
+      fullName: student.fullName,
+      mobile: student.mobile,
+      selectedClass: student.selectedClass,
+      role: student.role,
+    },
+  };
+};
+
+// ==========================================
+// Forgot Password Service (Send OTP)
+// ==========================================
+export const forgotPasswordStudentService = async (mobile) => {
+  if (!mobile) {
+    const error = new Error("Mobile number is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const student = await Student.findOne({ mobile });
+  if (!student) {
+    const error = new Error("Student with this mobile number is not registered.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!student.isActive) {
+    const error = new Error("Your account is inactive.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // Send OTP to mobile using Twilio Verify service
+  await sendOTP(student.mobile);
+
+  return {
+    message: "OTP sent to your mobile number.",
+  };
+};
+
+// ==========================================
+// Reset Password Service (Set New Password)
+// ==========================================
+export const resetPasswordStudentService = async (data) => {
+  const { mobile, otp, password } = data;
+
+  if (!mobile || !otp || !password) {
+    const error = new Error("Mobile, OTP, and new password are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // 1. Verify OTP using Twilio Verify
+  const verification = await verifyOTP(mobile, otp);
+
+  if (verification.status !== "approved") {
+    const error = new Error("Invalid or expired OTP.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // 2. Find student and update password
+  const student = await Student.findOne({ mobile });
+  if (!student) {
+    const error = new Error("Student not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  student.password = password;
+  await student.save(); // pre-save hook will hash it
+
+  return {
+    message: "Password reset successfully. You can now login with your new password.",
+  };
+};
+
 // ==========================================
 // GET MY PROFILE SERVICE
 // ==========================================

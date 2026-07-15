@@ -10,7 +10,9 @@ import {
   // enrollStudent,
   refreshAccessToken,
   verifyEmailOTP,
-  resendEmailOTP
+  resendEmailOTP,
+  forgotPassword,
+  resetPassword,
 } from "../../controllers/appController/student.controller.js";
 import { isAuthenticated } from "../../middleware/isAuthenticated.js";
 import { validate } from "../../middleware/validate.middleware.js";
@@ -30,6 +32,8 @@ router.post("/resend-mobile-otp",  resendMobileOTP);
 router.post("/verify-email-otp",  verifyEmailOTP);
 router.post("/resend-email-otp",  resendEmailOTP);
 router.post("/login",  loginStudent);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 // ==========================================
 // Student Profile Picture

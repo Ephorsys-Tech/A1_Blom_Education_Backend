@@ -21,15 +21,16 @@ const studentSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      trim: true,
+      select: false,
+    },
 
     parentsMobile: {
       type: String,
       trim: true,
-    },
-
-    password: {
-      type: String,
-      select: false,
     },
 
     email: {
@@ -181,7 +182,7 @@ const studentSchema = new mongoose.Schema(
     devices: [
       {
         deviceToken: { type: String, required: true },
-        deviceType: { type: String, enum: ["android", "ios", "web"], required: true },
+        deviceType: { type: String, enum: ["Android", "iOS"], required: true },
         lastActiveAt: { type: Date, default: Date.now },
       },
     ],

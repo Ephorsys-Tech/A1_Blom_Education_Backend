@@ -13,14 +13,16 @@ const pendingStudentSchema = new mongoose.Schema(
       required: [true, "Mobile Number is required"],
       trim: true,
     },
+    
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      trim: true,
+    },
 
     parentsMobile: {
       type: String,
       trim: true,
-    },
-
-    password: {
-      type: String,
     },
 
     email: {

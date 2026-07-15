@@ -62,6 +62,7 @@ export const studentRegister = z.object({
     .regex(/^[A-Za-z\s]+$/, "Name should contain only letters"),
 
   email: emailSchema,
+  password: z.string().min(8, "Password should be at least 8 characters"),
 
   mobile: mobileSchema,
 
@@ -151,9 +152,24 @@ export const studentUpdateProfile = z.object({
 // LOGIN
 // ==========================================
 
+export const studentLoginWithPassword = z.object({
+  mobile: mobileSchema,
+  password: z.string().min(8, "Password should be at least 8 characters"),
+});
+
+export const studentLoginWithOTP = z.object({
+  mobile: mobileSchema,
+  otp: z
+    .string()
+    .trim()
+    .length(6, "OTP must be 6 digits")
+    .regex(/^\d+$/, "OTP must contain only numbers")
+    .optional(),
+});
+
 export const studentLogin = z.object({
   mobile: mobileSchema,
-
+  password: z.string().min(8, "Password should be at least 8 characters").optional(),
   otp: z
     .string()
     .trim()
@@ -194,6 +210,10 @@ export const verifyMobileOTP = z.object({
 // FORGOT PASSWORD
 // ==========================================
 
+export const studentForgotPassword = z.object({
+  mobile: mobileSchema,
+});
+
 export const forgotPassword = z.object({
   email: emailSchema,
 });
@@ -201,6 +221,23 @@ export const forgotPassword = z.object({
 // ==========================================
 // RESET PASSWORD
 // ==========================================
+
+export const studentResetPassword = z.object({
+  mobile: mobileSchema,
+  otp: z
+    .string()
+    .trim()
+    .length(6, "OTP must be 6 digits")
+    .regex(/^\d+$/, "OTP must contain only numbers"),
+  password: passwordSchema,
+  confirmPassword: passwordSchema,
+}).refine(
+  (data) => data.password === data.confirmPassword,
+  {
+    path: ["confirmPassword"],
+    message: "Passwords do not match",
+  }
+);
 
 export const resetPassword = z.object({
   token: z.string().trim(),

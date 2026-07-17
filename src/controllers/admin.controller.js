@@ -84,7 +84,7 @@ export const loginAdmin = async (req, res, next) => {
     const accessCookieOption = {
       httpOnly: true,
       secure: true, // true in production
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 10 * 60 * 1000,
     };
 
@@ -92,7 +92,7 @@ export const loginAdmin = async (req, res, next) => {
     const refreshCookieOption = {
       httpOnly: true,
       secure: true, // true in production
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000,
     };
 
@@ -128,7 +128,7 @@ export const LogoutAdmin = async (req, res, next) => {
     // Clear Auth Cookies
     const cookieOptions = {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "none",
       secure: true,
     };
     res.clearCookie("token", cookieOptions);
@@ -160,7 +160,7 @@ export const refreshAdminToken = async (req, res, next) => {
     const accessCookieOption = {
       httpOnly: true,
       secure: true, // true in production
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 10 * 60 * 1000,
     };
 

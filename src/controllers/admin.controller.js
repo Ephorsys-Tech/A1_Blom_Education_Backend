@@ -11,7 +11,7 @@ import {
   getAllManagersService,
   toggleBlockManagerService,
   deleteManagerService,
-  updateManagerPasswordService
+  updateManagerPasswordService,
 } from "../services/admin.service.js";
 
 //-------------------------------------------------------
@@ -25,7 +25,8 @@ export const registerAdmin = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: "Admin Registered Successfully. OTP sent to your email for verification.",
+      message:
+        "Admin Registered Successfully. OTP sent to your email for verification.",
       data: adminData,
     });
   } catch (error) {
@@ -82,16 +83,16 @@ export const loginAdmin = async (req, res, next) => {
     // Cookie Options for Access Token (10m)
     const accessCookieOption = {
       httpOnly: true,
-      secure: false, // true in production
-      sameSite: "lax",
+      secure: true, // true in production
+      sameSite: "none",
       maxAge: 10 * 60 * 1000,
     };
 
     // Cookie Options for Refresh Token (1d)
     const refreshCookieOption = {
       httpOnly: true,
-      secure: false, // true in production
-      sameSite: "lax",
+      secure: true, // true in production
+      sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000,
     };
 
@@ -127,8 +128,8 @@ export const LogoutAdmin = async (req, res, next) => {
     // Clear Auth Cookies
     const cookieOptions = {
       httpOnly: true,
-      sameSite: "lax",
-      secure: false,
+      sameSite: "none",
+      secure: true,
     };
     res.clearCookie("token", cookieOptions);
     res.clearCookie("accessToken", cookieOptions);
@@ -150,15 +151,16 @@ export const LogoutAdmin = async (req, res, next) => {
 //-------------------------------------------------------
 export const refreshAdminToken = async (req, res, next) => {
   try {
-    const incomingRefreshToken = req.body.refreshToken || req.cookies.refreshToken;
+    const incomingRefreshToken =
+      req.body.refreshToken || req.cookies.refreshToken;
 
     const result = await refreshAdminTokenService(incomingRefreshToken);
 
     // Cookie Options for Access Token (10m)
     const accessCookieOption = {
       httpOnly: true,
-      secure: false, // true in production
-      sameSite: "lax",
+      secure: true, // true in production
+      sameSite: "none",
       maxAge: 10 * 60 * 1000,
     };
 
@@ -271,11 +273,14 @@ export const getAllManagers = async (req, res, next) => {
 //-------------------------------------------------------
 export const toggleBlockManager = async (req, res, next) => {
   try {
-    const manager = await toggleBlockManagerService(req.admin.role, req.params.id);
+    const manager = await toggleBlockManagerService(
+      req.admin.role,
+      req.params.id,
+    );
 
     return res.status(200).json({
       success: true,
-      message: `Manager ${manager.isBlocked ? 'blocked' : 'unblocked'} successfully`,
+      message: `Manager ${manager.isBlocked ? "blocked" : "unblocked"} successfully`,
       data: manager,
     });
   } catch (error) {
@@ -308,7 +313,11 @@ export const deleteManager = async (req, res, next) => {
 //-------------------------------------------------------
 export const updateManagerPassword = async (req, res, next) => {
   try {
-    await updateManagerPasswordService(req.admin.role, req.params.id, req.body.password);
+    await updateManagerPasswordService(
+      req.admin.role,
+      req.params.id,
+      req.body.password,
+    );
 
     return res.status(200).json({
       success: true,

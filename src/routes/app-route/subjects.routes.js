@@ -4,8 +4,7 @@ import {
   updateSubject,
   deleteSubject,
   getSubjects,
-  getAdminSubjects,
-  getSubjectById,
+  getSubjectById, 
 } from "../../controllers/appController/subjects.controller.js";
 import protect, { authorize } from "../../middleware/auth.middleware.js";
 import upload from "../../middleware/multer.middleware.js";
@@ -32,22 +31,13 @@ router.post(
   "/",
   protect,
   authorize("admin", "app-manager"),
-  upload.single("thumbnail"),
   validate({ body: createSubjectSchema }),
   createSubject
-);
-router.get(
-  "/admin/all",
-  protect,
-  authorize("admin", "app-manager"),
-  validate({ query: getSubjectsQuerySchema }),
-  getAdminSubjects
 );
 router.put(
   "/:id",
   protect,
   authorize("admin", "app-manager"),
-  upload.single("thumbnail"),
   validate({ params: paramIdSchema, body: updateSubjectSchema }),
   updateSubject
 );

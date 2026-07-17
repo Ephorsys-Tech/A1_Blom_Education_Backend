@@ -1,21 +1,11 @@
 import mongoose from "mongoose";
+import { required } from "zod/mini";
 
 const subjectsSchema = new mongoose.Schema(
   {
-    // ==========================================
-    // BASIC INFORMATION
-    // ==========================================
-
     name: {
       type: String,
       required: [true, "Subject name is required"],
-      trim: true,
-    },
-
-    code: {
-      type: String,
-      required: [true, "Subject code is required"],
-      unique: true,
       trim: true,
     },
 
@@ -25,48 +15,7 @@ const subjectsSchema = new mongoose.Schema(
       default: "",
       maxlength: 500,
     },
-
-    thumbnail: {
-      public_id: {
-        type: String,
-        default: "",
-      },
-      url: {
-        type: String,
-        default: "",
-      },
-    },
-
-    // ==========================================
-    // PRICING
-    // ==========================================
-
-    price: {
-      type: Number,
-      required: [true, "Subject price is required"],
-      min: [0, "Price cannot be negative"],
-    },
-
-    discountPrice: {
-      type: Number,
-      default: 0,
-      min: [0, "Discount price cannot be negative"],
-    },
-
-    // ==========================================
-    // RELATIONSHIPS
-    // ==========================================
-
-    classes: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Classes",
-      required: [true, "Class reference is required"],
-    },
-
-    // ==========================================
-    // SETTINGS
-    // ==========================================
-
+    
     isActive: {
       type: Boolean,
       default: true,
@@ -76,10 +25,34 @@ const subjectsSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    price: {
+      type: Number,
+      required: [true, "Class price is required"],
+      min: [0, "Price cannot be negative"],
+    },
+
+    discountPrice: {
+      type: Number,
+      min: 0,
+    },
+    
+    discountPercent: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+
+    classes: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Classes",
+      required: [true, "Class reference is required"],
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export default mongoose.model("Subject", subjectsSchema);

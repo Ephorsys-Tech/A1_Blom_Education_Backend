@@ -32,17 +32,16 @@ router.post(
   "/",
   protect,
   authorize("admin", "app-manager"),
-  upload.none(),
   validate({ body: createChapterSchema }),
   createChapter
 );
-router.get(
-  "/admin/all",
-  protect,
-  authorize("admin", "app-manager"),
-  validate({ query: getChaptersQuerySchema }),
-  getAdminChapters
-);
+// router.get(
+//   "/admin/all",
+//   protect,
+//   authorize("admin", "app-manager"),
+//   validate({ query: getChaptersQuerySchema }),
+//   getAdminChapters
+// );// may be delete
 router.put(
   "/:id",
   protect,

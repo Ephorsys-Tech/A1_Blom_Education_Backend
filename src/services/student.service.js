@@ -377,7 +377,7 @@ export const verifyEmailOTPService = async (data) => {
 
 export const resendEmailOTPService = async (data) => {
   const { email } = data;
-
+  
   if (!email) {
     const error = new Error("Email is required.");
     error.statusCode = 400;

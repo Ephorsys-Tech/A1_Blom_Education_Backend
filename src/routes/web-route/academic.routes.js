@@ -38,10 +38,10 @@ router.get("/public/chapters/:id", getPublicChapterDetail);
 // ==========================================
 
 // Class routes
-router.post("/classes", protect, createClass);
+router.post("/classes", protect, upload.single("image"), createClass);
 router.get("/classes", protect, getAllClasses);
 router.get("/classes/:id", protect, getClassById);
-router.put("/classes/:id", protect, updateClass);
+router.put("/classes/:id", protect, upload.single("image"), updateClass);
 router.delete("/classes/:id", protect, deleteClass);
 
 // Subject routes (handles textbook PDF upload as 'pdf' field)

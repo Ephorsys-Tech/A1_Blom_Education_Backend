@@ -35,10 +35,10 @@ const lectureSchema = new mongoose.Schema(
       required: [true, "Chapter reference is required"],
     },
 
-    course: {
+    subject: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Course",
-      required: [true, "Course/Subject reference is required"],
+      ref: "Subject",
+      required: [true, "Subject reference is required"],
     },
 
     isPreview: {

@@ -19,10 +19,10 @@ const chapterSchema = new mongoose.Schema(
       default: "",
     },
 
-    course: {
+    subject: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Course",
-      required: [true, "Course/Subject reference is required"],
+      ref: "Subject",
+      required: [true, "Subject reference is required"],
     },
 
     isActive: {
@@ -40,7 +40,7 @@ const chapterSchema = new mongoose.Schema(
   }
 );
 
-// Compound index to ensure unique chapter number per Course/Subject
-chapterSchema.index({ course: 1, chapterNumber: 1 }, { unique: true });
+// Compound index to ensure unique chapter number per Subject
+chapterSchema.index({ subject: 1, chapterNumber: 1 }, { unique: true });
 
 export default mongoose.model("Chapter", chapterSchema);

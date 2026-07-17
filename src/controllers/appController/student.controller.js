@@ -1,35 +1,42 @@
 import { respond } from "../../utils/respond.js";
 import {
-  confirmDeleteAccountService,
   getMyProfileService,
   loginStudentService,
   logoutStudentService,
   registerStudentService,
-  requestDeleteAccountOTPService,
   resendMobileOTPService,
   updateProfileService,
   verifyMobileOTPService,
-  enrollStudentService,
+  // enrollStudentService,
   refreshAccessTokenService,
   verifyEmailOTPService,
-  resendEmailOTPService
+  resendEmailOTPService,
+  loginStudentWithPasswordService,
+  forgotPasswordStudentService,
+  resetPasswordStudentService,
 } from "../../services/student.service.js";
-import { studentRegister } from "../../validations/student.validation.js";
+import {
+  studentLogin,
+  studentRegister,
+  studentLoginWithPassword,
+  studentLoginWithOTP,
+  studentForgotPassword,
+  studentResetPassword,
+} from "../../validations/student.validation.js";
 
 // ==========================================
 // Register Student
 // ==========================================
 export const registerStudent = async (req, res, next) => {
   try {
-    const result = studentRegister.safeParse(req.body)
-        if (!result.success) {
+    const result = studentRegister.safeParse(req.body);
+    if (!result.success) {
       return res.status(400).json({
         success: false,
         message: "Validation failed",
         errors: result.error.format(),
       });
     }
-
 
     const student = await registerStudentService(result.data);
 
@@ -50,10 +57,32 @@ export const verifyMobileOTP = async (req, res, next) => {
   try {
     const result = await verifyMobileOTPService(req.body);
 
+    // Cookie Options for Student Access Token (15m)
+    const accessCookieOption = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000,
+    };
+
+    // Cookie Options for Student Refresh Token (30d)
+    const refreshCookieOption = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    };
+
+    // Set cookies in response
+    res.cookie("accessToken", result.accessToken, accessCookieOption);
+    res.cookie("refreshToken", result.refreshToken, refreshCookieOption);
+
     return res.status(200).json({
       success: true,
-      message: "Mobile verified successfully.",
-      result, 
+      message: "Mobile verified successfully. Login successful.",
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      student: result.student,
     });
   } catch (error) {
     next(error);
@@ -106,14 +135,115 @@ export const resendEmailOTP = async (req, res, next) => {
 // ==========================================
 export const loginStudent = async (req, res, next) => {
   try {
-    const result = await loginStudentService(req.body);
+    const isPasswordLogin = req.body.password !== undefined;
+    let loginResult;
+
+    if (isPasswordLogin) {
+      const result = studentLoginWithPassword.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: result.error.format(),
+        });
+      }
+      loginResult = await loginStudentWithPasswordService(result.data);
+    } else {
+      const result = studentLoginWithOTP.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: result.error.format(),
+        });
+      }
+      loginResult = await loginStudentService(result.data);
+    }
+
+    if (loginResult.otpRequired) {
+      return res.status(200).json({
+        success: true,
+        message: loginResult.message,
+        otpRequired: true,
+      });
+    }
+
+    // Cookie Options for Student Access Token (15m)
+    const accessCookieOption = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000,
+    };
+
+    // Cookie Options for Student Refresh Token (30d)
+    const refreshCookieOption = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    };
+
+    // Set cookies in response
+    res.cookie("accessToken", loginResult.accessToken, accessCookieOption);
+    res.cookie("refreshToken", loginResult.refreshToken, refreshCookieOption);
 
     return res.status(200).json({
       success: true,
       message: "Login Successfully.",
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-      student: result.student,
+      accessToken: loginResult.accessToken,
+      refreshToken: loginResult.refreshToken,
+      student: loginResult.student,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+// ==========================================
+// Forgot Password (Student)
+// ==========================================
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const result = studentForgotPassword.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.format(),
+      });
+    }
+
+    const serviceResult = await forgotPasswordStudentService(result.data.mobile);
+    return res.status(200).json({
+      success: true,
+      message: serviceResult.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ==========================================
+// Reset Password (Student)
+// ==========================================
+export const resetPassword = async (req, res, next) => {
+  try {
+    const result = studentResetPassword.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.format(),
+      });
+    }
+
+    const serviceResult = await resetPasswordStudentService(result.data);
+    return res.status(200).json({
+      success: true,
+      message: serviceResult.message,
     });
   } catch (error) {
     next(error);
@@ -160,32 +290,12 @@ export const updateProfile = async (req, res, next) => {
 export const logoutStudent = async (req, res, next) => {
   try {
     await logoutStudentService(req.student._id);
+
+    // Clear cookies upon logout
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+
     return respond(res, 200, "Logout successful.");
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ==========================================
-// REQUEST DELETE ACCOUNT OTP CONTROLLER
-// ==========================================
-export const requestDeleteAccountOTP = async (req, res, next) => {
-  try {
-    await requestDeleteAccountOTPService(req.student._id);
-    return respond(res, 200, "OTP sent for account deletion.");
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ==========================================
-// CONFIRM DELETE ACCOUNT CONTROLLER
-// ==========================================
-export const confirmDeleteAccount = async (req, res, next) => {
-  try {
-    const { otp } = req.body;
-    await confirmDeleteAccountService(req.student._id, otp);
-    return respond(res, 200, "Account deleted successfully.");
   } catch (error) {
     next(error);
   }
@@ -194,28 +304,38 @@ export const confirmDeleteAccount = async (req, res, next) => {
 // ==========================================
 // ENROLL STUDENT CONTROLLER
 // ==========================================
-export const enrollStudent = async (req, res, next) => {
-  try {
-    const result = await enrollStudentService(req.student._id, req.body);
+// export const enrollStudent = async (req, res, next) => {
+//   try {
+//     const result = await enrollStudentService(req.student._id, req.body);
 
-    return res.status(200).json({
-      success: true,
-      message: `Successfully enrolled in ${req.body.type || "item"}.`,
-      student: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+//     return res.status(200).json({
+//       success: true,
+//       message: `Successfully enrolled in ${req.body.type || "item"}.`,
+//       student: result,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 // ==========================================
 // Refresh Access Token
 // ==========================================
 export const refreshAccessToken = async (req, res, next) => {
   try {
-    const incomingRefreshToken = req.body.refreshToken;
+    const incomingRefreshToken = req.body.refreshToken || req.cookies.refreshToken;
 
     const result = await refreshAccessTokenService(incomingRefreshToken);
+
+    // Cookie Options for Student Access Token (15m)
+    const accessCookieOption = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000,
+    };
+
+    res.cookie("accessToken", result.accessToken, accessCookieOption);
 
     return res.status(200).json({
       success: true,

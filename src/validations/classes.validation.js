@@ -1,14 +1,7 @@
 import { z } from "zod";
 
-/**
- * Validation schema for Batch creation
- */
-export const createBatchSchema = z.object({
-  name: z.enum(["Class 6", "Class 7", "Class 8", "Class 9", "Class 10"], {
-    required_error: "Batch name is required",
-    invalid_type_error: "Batch name must be Class 6, Class 7, Class 8, Class 9, or Class 10",
-  }),
-
+// Validation schema for Class creation
+export const createClassSchema = z.object({
   classNumber: z.coerce
     .number({
       required_error: "Class number is required",
@@ -27,32 +20,24 @@ export const createBatchSchema = z.object({
 
   price: z.coerce
     .number({
-      required_error: "Batch price is required",
-      invalid_type_error: "Batch price must be a valid number",
+      required_error: "Class price is required",
+      invalid_type_error: "Class price must be a valid number",
     })
     .min(0, "Price cannot be negative"),
 
-  discountPrice: z.preprocess(
-    (val) => (val === "" || val === undefined ? undefined : val),
-    z.coerce.number().min(0, "Discount price cannot be negative").optional()
+  discountPercent: z.preprocess(
+    (val) => (val === "" || val === undefined ? 0 : val),
+    z.coerce.number().min(0).max(100),
   ),
 
   sortOrder: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
-    z.coerce.number().int("Sort order must be an integer").optional()
+    z.coerce.number().int("Sort order must be an integer").optional(),
   ),
 });
 
-/**
- * Validation schema for Batch updates
- */
-export const updateBatchSchema = z.object({
-  name: z
-    .enum(["Class 6", "Class 7", "Class 8", "Class 9", "Class 10"], {
-      invalid_type_error: "Batch name must be Class 6, Class 7, Class 8, Class 9, or Class 10",
-    })
-    .optional(),
-
+//  Validation schema for Class updates
+export const updateClassSchema = z.object({
   classNumber: z.coerce
     .number({
       invalid_type_error: "Class number must be a valid number",
@@ -70,23 +55,23 @@ export const updateBatchSchema = z.object({
 
   price: z.coerce
     .number({
-      invalid_type_error: "Batch price must be a valid number",
+      invalid_type_error: "Class price must be a valid number",
     })
     .min(0, "Price cannot be negative")
     .optional(),
 
-  discountPrice: z.preprocess(
-    (val) => (val === "" || val === undefined ? undefined : val),
-    z.coerce.number().min(0, "Discount price cannot be negative").optional()
+  discountPercent: z.preprocess(
+    (val) => (val === "" || val === undefined ? 0 : val),
+    z.coerce.number().min(0).max(100),
   ),
 
   sortOrder: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
-    z.coerce.number().int("Sort order must be an integer").optional()
+    z.coerce.number().int("Sort order must be an integer").optional(),
   ),
 
   isActive: z.preprocess(
     (val) => (val === "true" ? true : val === "false" ? false : val),
-    z.boolean().optional()
+    z.boolean().optional(),
   ),
 });

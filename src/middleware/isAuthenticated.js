@@ -8,19 +8,23 @@ export const isAuthenticated = async (req, res, next) => {
     // ==========================================
 
     const authHeader = req.headers.authorization;
+    let token;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    } else if (req.cookies && req.cookies.accessToken) {
+      token = req.cookies.accessToken;
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         message: "Access token is required.",
       });
     }
 
-    const token = authHeader.split(" ")[1];
-
     // ==========================================
-    // Verify Token (separated so we can tell
-    // "expired" apart from "invalid/tampered")
+    // Verify Token
     // ==========================================
 
     let decoded;
@@ -63,19 +67,8 @@ export const isAuthenticated = async (req, res, next) => {
       });
     }
 
-    if (student.isBlocked) {
-      return res.status(403).json({
-        success: false,
-        message: "Account has been blocked.",
-      });
-    }
-
     // ==========================================
     // Check Token Version
-    // (catches tokens issued before a logout /
-    // password change / forced revoke bumped
-    // tokenVersion — kills them even if the JWT
-    // itself hasn't naturally expired yet)
     // ==========================================
 
     if (decoded.tv !== student.tokenVersion) {

@@ -12,3 +12,16 @@ export const generateAccessToken = (student) => {
     },
   );
 };
+
+export const generateAdminAccessToken = (admin) => {
+  return jwt.sign(
+    {
+      id: admin._id,
+      role: admin.role,
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRE_Admin,
+    },
+  );
+};

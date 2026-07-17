@@ -4,9 +4,14 @@ import AdminModel from "../model/admin.model.js";
 const protect = async (req, res, next) => {
   try {
     // ---------------------------------------------
-    // Get Token From Cookie
+    // Get Token From Cookies or Authorization Header
     // ---------------------------------------------
-    const token = req.cookies.token;
+    let token = req.cookies.accessToken || req.cookies.token;
+
+    const authHeader = req.headers.authorization;
+    if (!token && authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
 
     if (!token) {
       return res.status(401).json({
@@ -15,19 +20,55 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // ----------------------------------------------
+    // ---------------------------------------------
     // Verify Token
-    // ----------------------------------------------
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // ----------------------------------------------
+    // ---------------------------------------------
+    let decoded;
+
+    try {
+      decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    } catch (error) {
+      if (error.name === "TokenExpiredError") {
+        return res.status(401).json({
+          success: false,
+          code: "TOKEN_EXPIRED",
+          message: "Access token expired. Please refresh your session.",
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        code: "INVALID_TOKEN",
+        message: "Invalid Token",
+      });
+    }
+
+    // ---------------------------------------------
     // Find Admin
-    // ----------------------------------------------
-    req.admin = await AdminModel.findById(decoded.id).select("-password");
+    // ---------------------------------------------
+    const admin = await AdminModel.findById(decoded.id).select("-password");
+
+    if (!admin) {
+      return res.status(401).json({
+        success: false,
+        message: "Admin or Manager not found.",
+      });
+    }
+
+    if (admin.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Account is blocked. Please contact the main admin.",
+      });
+    }
+
+    req.admin = admin;
     next();
   } catch (error) {
     return res.status(401).json({
-      message: false,
-      message: "Invalid Token",
+      success: false,
+      message: "Authentication failed",
+      error: error.message,
     });
   }
 };

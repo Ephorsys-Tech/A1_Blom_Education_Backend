@@ -21,18 +21,39 @@ export const registerAdminSchema = z.object({
 });
 
 /**
- * Validation schema for Admin Login
+ * Validation schema for Admin Login (allows email + password, or userId + password)
  */
-export const loginAdminSchema = z.object({
-  email: z
-    .string({ required_error: "Email or User ID is required" })
-    .trim()
-    .min(1, "Email or User ID cannot be empty")
-    .toLowerCase(),
+export const loginAdminSchema = z.union([
+  z.object({
+    email: z
+      .string({ required_error: "Email is required" })
+      .trim()
+      .min(1, "Email cannot be empty")
+      .email("Enter a valid email address")
+      .toLowerCase(),
+    password: z
+      .string({ required_error: "Password is required" })
+      .min(1, "Password cannot be empty"),
+  }),
+  z.object({
+    userId: z
+      .string({ required_error: "User ID is required" })
+      .trim()
+      .min(1, "User ID cannot be empty"),
+    password: z
+      .string({ required_error: "Password is required" })
+      .min(1, "Password cannot be empty"),
+  }),
+]);
 
-  password: z
-    .string({ required_error: "Password is required" })
-    .min(1, "Password cannot be empty"),
+/**
+ * Validation schema for Admin Refresh Token
+ */
+export const refreshAdminTokenSchema = z.object({
+  refreshToken: z
+    .string({ required_error: "Refresh token is required" })
+    .trim()
+    .min(1, "Refresh token cannot be empty"),
 });
 
 /**
@@ -104,3 +125,40 @@ export const giveAccessSchema = z.object({
     .trim()
     .min(1, "User ID cannot be empty"),
 });
+
+/**
+ * Validation schema for Verify Admin Email OTP
+ */
+export const verifyAdminEmailSchema = z.object({
+  email: z
+    .string({ required_error: "Email is required" })
+    .trim()
+    .email("Enter a valid email address")
+    .toLowerCase(),
+
+  otp: z
+    .string({ required_error: "OTP is required" })
+    .trim()
+    .regex(/^[0-9]{6}$/, "OTP must be exactly 6 digits"),
+});
+
+/**
+ * Validation schema for Resend Admin OTP
+ */
+export const resendAdminOtpSchema = z.object({
+  email: z
+    .string({ required_error: "Email is required" })
+    .trim()
+    .email("Enter a valid email address")
+    .toLowerCase(),
+});
+
+/**
+ * Validation schema for Admin updating Manager Password
+ */
+export const updateManagerPasswordSchema = z.object({
+  password: z
+    .string({ required_error: "Password is required" })
+    .min(6, "Password must be at least 6 characters"),
+});
+

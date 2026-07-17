@@ -1,6 +1,6 @@
 import Lecture from "../model/appModel/lecture.model.js";
 import Chapter from "../model/appModel/chapter.model.js";
-import Course from "../model/appModel/course.model.js";
+import Subject from "../model/appModel/subjects.model.js";
 import Student from "../model/appModel/student.model.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.config.js";
 
@@ -16,7 +16,7 @@ export const createLectureService = async (data, file) => {
     throw error;
   }
 
-  // Verify chapter exists and retrieve its course
+  // Verify chapter exists and retrieve its subject
   const targetChapter = await Chapter.findById(chapterId);
   if (!targetChapter) {
     const error = new Error("Referenced chapter not found.");
@@ -49,7 +49,7 @@ export const createLectureService = async (data, file) => {
     videoPublicId,
     duration,
     chapter: chapterId,
-    course: targetChapter.course,
+    subject: targetChapter.subject,
     isPreview: isPreview === "true" || isPreview === true,
     sortOrder: sortOrder || 0,
   });
@@ -78,7 +78,7 @@ export const updateLectureService = async (id, data, file) => {
       throw error;
     }
     lecture.chapter = chapterId;
-    lecture.course = targetChapter.course;
+    lecture.subject = targetChapter.subject;
   }
 
   if (title !== undefined) lecture.title = title;
@@ -149,14 +149,14 @@ export const getLecturesService = async (chapterId, studentId) => {
     throw error;
   }
 
-  const courseObj = await Course.findById(chapterObj.course);
-  if (!courseObj) {
-    const error = new Error("Associated course/subject not found.");
+  const subjectObj = await Subject.findById(chapterObj.subject);
+  if (!subjectObj) {
+    const error = new Error("Associated subject not found.");
     error.statusCode = 404;
     throw error;
   }
 
-  // Check if the student is enrolled in either the Course (subject) or the parent Batch (class)
+  // Check if the student is enrolled in either the Subject or the parent Classes
   const student = await Student.findById(studentId);
   if (!student) {
     const error = new Error("Student not found.");
@@ -164,14 +164,14 @@ export const getLecturesService = async (chapterId, studentId) => {
     throw error;
   }
 
-  const hasCourseEnrollment = student.enrolledCourses.some(
-    (item) => item.course.toString() === courseObj._id.toString()
+  const hasSubjectEnrollment = student.enrolledSubjects.some(
+    (item) => item.subject.toString() === subjectObj._id.toString()
   );
-  const hasBatchEnrollment = student.enrolledBatches.some(
-    (item) => item.batch.toString() === courseObj.batch.toString()
+  const hasClassEnrollment = student.enrolledClasses.some(
+    (item) => item.classes.toString() === subjectObj.classes.toString()
   );
 
-  const isEnrolled = hasCourseEnrollment || hasBatchEnrollment;
+  const isEnrolled = hasSubjectEnrollment || hasClassEnrollment; 
 
   // Fetch active lectures
   const lectures = await Lecture.find({ chapter: chapterId, isActive: true })

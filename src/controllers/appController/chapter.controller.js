@@ -51,8 +51,8 @@ export const deleteChapter = async (req, res, next) => {
 // ==========================================
 export const getChapters = async (req, res, next) => {
   try {
-    const { course: courseId } = req.query;
-    const chapters = await getChaptersService(courseId);
+    const { subject: subjectId } = req.query;
+    const chapters = await getChaptersService(subjectId);
     return respond(res, 200, "Chapters fetched successfully.", chapters);
   } catch (error) {
     next(error);
@@ -64,8 +64,8 @@ export const getChapters = async (req, res, next) => {
 // ==========================================
 export const getAdminChapters = async (req, res, next) => {
   try {
-    const { course: courseId } = req.query;
-    const chapters = await getAdminChaptersService(courseId);
+    const { subject: subjectId } = req.query;
+    const chapters = await getAdminChaptersService(subjectId);
     return respond(res, 200, "All chapters fetched successfully.", chapters);
   } catch (error) {
     next(error);

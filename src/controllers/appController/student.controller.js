@@ -61,7 +61,7 @@ export const verifyMobileOTP = async (req, res, next) => {
     const accessCookieOption = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 15 * 60 * 1000,
     };
 
@@ -69,7 +69,7 @@ export const verifyMobileOTP = async (req, res, next) => {
     const refreshCookieOption = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     };
 
@@ -172,7 +172,7 @@ export const loginStudent = async (req, res, next) => {
     const accessCookieOption = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 15 * 60 * 1000,
     };
 
@@ -180,7 +180,7 @@ export const loginStudent = async (req, res, next) => {
     const refreshCookieOption = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     };
 
@@ -331,7 +331,7 @@ export const refreshAccessToken = async (req, res, next) => {
     const accessCookieOption = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 15 * 60 * 1000,
     };
 

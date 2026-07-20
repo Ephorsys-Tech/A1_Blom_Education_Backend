@@ -1,24 +1,47 @@
-import express from "express";
-import {
-  uploadVideo,
-  deleteVideo,
-  getAllVideos,
-  getPublicVideos,
-  toggleVideoStatus,
-} from "../../controllers/webController/video.controller.js";
-import protect from "../../middleware/auth.middleware.js";
+// src/routes/web-route/video.routes.js
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { processUploadedVideo } from '../../services/video.service.js';
 
 const router = express.Router();
 
-// Get public videos - accessible to anyone
-router.get("/public", getPublicVideos);
+// Directory to store original uploaded videos
+const videoStoragePath = path.resolve('videos'); // project root/videos
 
-// Get all videos - protected so only logged in users (or admin) can view
-router.get("/", protect, getAllVideos);
+// Ensure directory exists (will be created by multer storage callback if missing)
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, videoStoragePath);
+  },
+  filename: (req, file, cb) => {
+    // Generate UUID and preserve original extension
+    const ext = path.extname(file.originalname);
+    const filename = `${uuidv4()}${ext}`;
+    cb(null, filename);
+  },
+});
 
-// Admin routes for video management
-router.post("/upload", protect, uploadVideo);
-router.delete("/:id", protect, deleteVideo);
-router.put("/toggle/:id", protect, toggleVideoStatus);
+const upload = multer({ storage });
+
+/**
+ * POST /videos/upload
+ * Accepts a single video file (field name "video").
+ * Optional query param `chunkDuration` in seconds (default 10).
+ */
+router.post('/upload', upload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No video file uploaded' });
+    }
+    const chunkDuration = Number(req.query.chunkDuration) || 10;
+    const result = await processUploadedVideo(req.file.path, chunkDuration);
+    res.json({ success: true, uuid: result.uuid, chunks: result.chunks });
+  } catch (err) {
+    console.error('Video upload error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 export default router;

@@ -1,14 +1,18 @@
+import mongoose from "mongoose";
 import Lecture from "../model/appModel/lecture.model.js";
 import Chapter from "../model/appModel/chapter.model.js";
 import Subject from "../model/appModel/subjects.model.js";
 import Student from "../model/appModel/student.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.config.js";
+import { processUploadedVideo } from "./video.service.js";
+import { uploadDirectoryToS3 } from "../utils/s3Helper.js";
+import fs from "fs";
+import path from "path";
 
 // ==========================================
 // CREATE LECTURE Service
 // ==========================================
 export const createLectureService = async (data, file) => {
-  const { title, description, chapter: chapterId, isPreview, sortOrder, videoUrl: directVideoUrl } = data || {};
+  const { title, description, chapter: chapterId, isPreview, sortOrder, videoUrl: directVideoUrl, chunkDuration } = data || {};
 
   if (!title || !chapterId) {
     const error = new Error("Title and chapter reference are required.");
@@ -25,15 +29,41 @@ export const createLectureService = async (data, file) => {
   }
 
   let videoUrl = directVideoUrl || "";
-  let videoPublicId = "";
   let duration = 0;
+  
+  // Pre-generate lecture ID for structured S3 path
+  const lectureId = new mongoose.Types.ObjectId();
 
   if (file) {
-    // Upload video buffer to Cloudinary
-    const uploadResult = await uploadToCloudinary(file.buffer, "lectures", "video");
-    videoUrl = uploadResult.url;
-    videoPublicId = uploadResult.publicId;
-    duration = uploadResult.duration || 0;
+    // Process local disk uploaded video: generate chunks locally
+    const durationSec = Number(chunkDuration) || 10;
+    const processResult = await processUploadedVideo(file.path, durationSec);
+    
+    // Upload directory to S3
+    const s3Prefix = `videos/subject-${targetChapter.subject}/chapter-${chapterId}/lecture-${lectureId}`;
+    const s3Urls = await uploadDirectoryToS3(processResult.outputDir, s3Prefix);
+
+    // Find the master playlist URL
+    const masterUrl = s3Urls.find(url => url.endsWith('master.m3u8'));
+    
+    if (!masterUrl) {
+      throw new Error("Failed to generate or upload master playlist.");
+    }
+
+    videoUrl = masterUrl;
+    duration = processResult.duration || 0;
+
+    // Clean up local files
+    try {
+      if (fs.existsSync(processResult.outputDir)) {
+        fs.rmSync(processResult.outputDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+      }
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+    } catch (cleanupErr) {
+      console.error("Error cleaning up local files:", cleanupErr);
+    }
   }
 
   if (!videoUrl) {
@@ -43,10 +73,10 @@ export const createLectureService = async (data, file) => {
   }
 
   const lecture = await Lecture.create({
+    _id: lectureId,
     title,
     description: description || "",
     videoUrl,
-    videoPublicId,
     duration,
     chapter: chapterId,
     subject: targetChapter.subject,
@@ -61,7 +91,7 @@ export const createLectureService = async (data, file) => {
 // UPDATE LECTURE Service
 // ==========================================
 export const updateLectureService = async (id, data, file) => {
-  const { title, description, chapter: chapterId, isPreview, sortOrder, isActive, videoUrl: directVideoUrl } = data || {};
+  const { title, description, chapter: chapterId, isPreview, sortOrder, isActive, videoUrl: directVideoUrl, chunkDuration } = data || {};
 
   const lecture = await Lecture.findById(id);
   if (!lecture) {
@@ -88,24 +118,40 @@ export const updateLectureService = async (id, data, file) => {
   if (isActive !== undefined) lecture.isActive = isActive;
 
   if (directVideoUrl) {
-    // If direct URL is provided, replace old Cloudinary resource
-    if (lecture.videoPublicId) {
-      await deleteFromCloudinary(lecture.videoPublicId, "video");
-      lecture.videoPublicId = "";
-    }
     lecture.videoUrl = directVideoUrl;
     lecture.duration = 0;
   }
 
   if (file) {
-    // Upload new video file to Cloudinary
-    if (lecture.videoPublicId) {
-      await deleteFromCloudinary(lecture.videoPublicId, "video");
+    // Process local disk uploaded video: generate chunks locally
+    const durationSec = Number(chunkDuration) || 10;
+    const processResult = await processUploadedVideo(file.path, durationSec);
+    
+    // Upload directory to S3
+    const s3Prefix = `videos/subject-${lecture.subject}/chapter-${lecture.chapter}/lecture-${lecture._id}`;
+    const s3Urls = await uploadDirectoryToS3(processResult.outputDir, s3Prefix);
+
+    // Find the master playlist URL
+    const masterUrl = s3Urls.find(url => url.endsWith('master.m3u8'));
+    
+    if (!masterUrl) {
+      throw new Error("Failed to generate or upload master playlist.");
     }
-    const uploadResult = await uploadToCloudinary(file.buffer, "lectures", "video");
-    lecture.videoUrl = uploadResult.url;
-    lecture.videoPublicId = uploadResult.publicId;
-    lecture.duration = uploadResult.duration || 0;
+
+    lecture.videoUrl = masterUrl;
+    lecture.duration = processResult.duration || 0;
+
+    // Clean up local files
+    try {
+      if (fs.existsSync(processResult.outputDir)) {
+        fs.rmSync(processResult.outputDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+      }
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+    } catch (cleanupErr) {
+      console.error("Error cleaning up local files:", cleanupErr);
+    }
   }
 
   await lecture.save();
@@ -121,11 +167,6 @@ export const deleteLectureService = async (id) => {
     const error = new Error("Lecture not found.");
     error.statusCode = 404;
     throw error;
-  }
-
-  // Delete video from Cloudinary if exists
-  if (lecture.videoPublicId) {
-    await deleteFromCloudinary(lecture.videoPublicId, "video");
   }
 
   await Lecture.findByIdAndDelete(id);

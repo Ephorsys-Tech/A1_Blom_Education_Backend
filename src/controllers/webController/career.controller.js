@@ -1,9 +1,7 @@
 import CareerModel from "../../model/webModel/career.model.js";
 import ApplicationModel from "../../model/webModel/application.model.js";
-import {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-} from "../../config/cloudinary.config.js";
+import { uploadBufferToS3, deleteFileFromS3 } from "../../utils/s3Helper.js";
+import path from "path";
 import { z } from "zod";
 
 const ApplyJobForm = z.object({
@@ -14,60 +12,35 @@ const ApplyJobForm = z.object({
   email: z.string().email({ message: "Enter a valid email" }),
   phone: z
     .string()
-    .regex(/^[0-9]{10}$/, "Phone must be 10 digits"),
+    .min(10, "Phone number must be at least 10 digits")
+    .regex(/^[0-9]+$/, "Phone number should contain only digits"),
   jobId: z.string().min(1, "Job ID is required"),
 });
 
 // ==========================================
-// Job Opening Management (Admin & Public)
+// Job Posting Management (Admin)
 // ==========================================
 
-// Create Job Opening (Admin)
+// Create Job Posting
 export const createJob = async (req, res) => {
   try {
-    const {
-      title,
-      department,
-      location,
-      description,
-      requirements,
-      experience,
-      salary,
-      isActive,
-    } = req.body;
+    const { title, department, location, jobType, description, requirements, responsibilities } = req.body;
 
-    if (!title || !department || !location || !description || !experience) {
+    if (!title || !department || !location || !jobType || !description) {
       return res.status(400).json({
         success: false,
-        message:
-          "Title, department, location, description, and experience are required",
+        message: "Title, department, location, jobType, and description are required",
       });
     }
 
-    let parsedRequirements = [];
-    if (requirements) {
-      if (Array.isArray(requirements)) {
-        parsedRequirements = requirements;
-      } else if (typeof requirements === "string") {
-        parsedRequirements = requirements
-          .split(",")
-          .map((req) => req.trim())
-          .filter(Boolean);
-      }
-    }
-
     const job = await CareerModel.create({
-      title,
-      department,
-      location,
-      description,
-      requirements: parsedRequirements,
-      experience,
-      salary: salary || "",
-      isActive:
-        isActive !== undefined
-          ? isActive === "true" || isActive === true
-          : true,
+      title: title.trim(),
+      department: department.trim(),
+      location: location.trim(),
+      jobType: jobType.trim(),
+      description: description.trim(),
+      requirements: Array.isArray(requirements) ? requirements : [],
+      responsibilities: Array.isArray(responsibilities) ? responsibilities : [],
     });
 
     return res.status(201).json({
@@ -85,21 +58,19 @@ export const createJob = async (req, res) => {
   }
 };
 
-// Get Active Jobs (Public)
+// Get All Job Postings (Admin & Public)
 export const getJobs = async (req, res) => {
   try {
-    const jobs = await CareerModel.find({ isActive: true }).sort({
-      createdAt: -1,
-    });
+    const jobs = await CareerModel.find().sort({ createdAt: -1 });
     return res.status(200).json({
       success: true,
       data: jobs,
     });
   } catch (error) {
-    console.error("Get Active Jobs Error:", error);
+    console.error("Get Jobs Error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error while fetching job openings",
+      message: "Internal server error while fetching jobs",
       error: error.message,
     });
   }
@@ -154,7 +125,47 @@ export const toggleJobStatus = async (req, res) => {
   }
 };
 
-// Delete Job Posting (Admin)
+// Update Job Posting
+export const updateJob = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, department, location, jobType, description, requirements, responsibilities, isActive } = req.body;
+
+    const job = await CareerModel.findById(id);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "Job posting not found",
+      });
+    }
+
+    if (title) job.title = title.trim();
+    if (department) job.department = department.trim();
+    if (location) job.location = location.trim();
+    if (jobType) job.jobType = jobType.trim();
+    if (description) job.description = description.trim();
+    if (requirements !== undefined) job.requirements = Array.isArray(requirements) ? requirements : [];
+    if (responsibilities !== undefined) job.responsibilities = Array.isArray(responsibilities) ? responsibilities : [];
+    if (isActive !== undefined) job.isActive = isActive;
+
+    await job.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Job posting updated successfully",
+      data: job,
+    });
+  } catch (error) {
+    console.error("Update Job Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while updating job posting",
+      error: error.message,
+    });
+  }
+};
+
+// Delete Job Posting
 export const deleteJob = async (req, res) => {
   try {
     const { id } = req.params;
@@ -163,23 +174,22 @@ export const deleteJob = async (req, res) => {
     if (!job) {
       return res.status(404).json({
         success: false,
-        message: "Job opening not found",
+        message: "Job posting not found",
       });
     }
 
     // Delete job
     await CareerModel.findByIdAndDelete(id);
 
-    // Optionally delete related applications or leave them in the database.
-    // For completeness, we delete applications associated with this job
+    // For completeness, delete applications associated with this job
     const applications = await ApplicationModel.find({ jobId: id });
     for (const app of applications) {
-      if (app.resumePublicId) {
+      if (app.resumePublicId || app.resumeUrl) {
         try {
-          await deleteFromCloudinary(app.resumePublicId, "raw"); // PDF/Word docs are raw resources in cloudinary
+          await deleteFileFromS3(app.resumePublicId || app.resumeUrl);
         } catch (e) {
           console.error(
-            `Failed to delete resume ${app.resumePublicId} from Cloudinary:`,
+            `Failed to delete resume ${app.resumePublicId} from S3:`,
             e,
           );
         }
@@ -238,11 +248,13 @@ export const applyJob = async (req, res) => {
       });
     }
 
-    // Upload resume to Cloudinary as raw resource type (PDFs and documents are uploaded as raw or auto)
-    const uploadResult = await uploadToCloudinary(
+    // Upload resume to S3
+    const ext = path.extname(req.file.originalname || "") || ".pdf";
+    const s3Key = `careers/resume-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    const uploadResult = await uploadBufferToS3(
       req.file.buffer,
-      "resumes",
-      "raw",
+      s3Key,
+      req.file.mimetype || "application/pdf"
     );
 
     const application = await ApplicationModel.create({
@@ -251,7 +263,7 @@ export const applyJob = async (req, res) => {
       email,
       phone,
       resumeUrl: uploadResult.url,
-      resumePublicId: uploadResult.publicId,
+      resumePublicId: uploadResult.key,
     });
 
     return res.status(201).json({
@@ -303,9 +315,9 @@ export const deleteApplication = async (req, res) => {
       });
     }
 
-    // Delete resume from Cloudinary
-    if (application.resumePublicId) {
-      await deleteFromCloudinary(application.resumePublicId, "raw");
+    // Delete resume from S3
+    if (application.resumePublicId || application.resumeUrl) {
+      await deleteFileFromS3(application.resumePublicId || application.resumeUrl);
     }
 
     await ApplicationModel.findByIdAndDelete(id);

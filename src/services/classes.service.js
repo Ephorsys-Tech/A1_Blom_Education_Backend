@@ -1,8 +1,6 @@
 import Classes from "../model/appModel/classes.model.js";
-import {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-} from "../config/cloudinary.config.js";
+import { uploadBufferToS3, deleteFileFromS3 } from "../utils/s3Helper.js";
+import path from "path";
 
 // CREATE CLASS Service
 export const createClassService = async (data, file) => {
@@ -27,13 +25,15 @@ export const createClassService = async (data, file) => {
   let thumbnail = { public_id: "", url: "" };
 
   if (file) {
-    const uploadResult = await uploadToCloudinary(
+    const ext = path.extname(file.originalname || "") || ".jpg";
+    const s3Key = `classes/thumbnail-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    const uploadResult = await uploadBufferToS3(
       file.buffer,
-      "classes",
-      "image",
+      s3Key,
+      file.mimetype || "image/jpeg"
     );
     thumbnail = {
-      public_id: uploadResult.publicId,
+      public_id: uploadResult.key,
       url: uploadResult.url,
     };
   }
@@ -94,16 +94,18 @@ export const updateClassService = async (id, data, file) => {
 
   if (file) {
     // Delete old thumbnail if it exists
-    if (classes.thumbnail && classes.thumbnail.public_id) {
-      await deleteFromCloudinary(classes.thumbnail.public_id, "image");
+    if (classes.thumbnail && (classes.thumbnail.public_id || classes.thumbnail.url)) {
+      await deleteFileFromS3(classes.thumbnail.public_id || classes.thumbnail.url);
     }
-    const uploadResult = await uploadToCloudinary(
+    const ext = path.extname(file.originalname || "") || ".jpg";
+    const s3Key = `classes/thumbnail-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    const uploadResult = await uploadBufferToS3(
       file.buffer,
-      "classes",
-      "image",
+      s3Key,
+      file.mimetype || "image/jpeg"
     );
     classes.thumbnail = {
-      public_id: uploadResult.publicId,
+      public_id: uploadResult.key,
       url: uploadResult.url,
     };
   }
@@ -121,9 +123,9 @@ export const deleteClassService = async (id) => {
     throw error;
   }
 
-  // Delete thumbnail from Cloudinary if exists
-  if (classes.thumbnail && classes.thumbnail.public_id) {
-    await deleteFromCloudinary(classes.thumbnail.public_id, "image");
+  // Delete thumbnail from S3 if exists
+  if (classes.thumbnail && (classes.thumbnail.public_id || classes.thumbnail.url)) {
+    await deleteFileFromS3(classes.thumbnail.public_id || classes.thumbnail.url);
   }
 
   await Classes.findByIdAndDelete(id);

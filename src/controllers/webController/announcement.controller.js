@@ -1,5 +1,6 @@
 import AnnouncementModel from "../../model/webModel/announcement.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../../config/cloudinary.config.js";
+import { uploadBufferToS3, deleteFileFromS3 } from "../../utils/s3Helper.js";
+import path from "path";
 
 // Create Announcement
 export const createAnnouncement = async (req, res) => {
@@ -18,9 +19,11 @@ export const createAnnouncement = async (req, res) => {
 
     // Upload image if provided
     if (req.file) {
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "announcements", "image");
+      const ext = path.extname(req.file.originalname || "") || ".jpg";
+      const s3Key = `announcements/image-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+      const uploadResult = await uploadBufferToS3(req.file.buffer, s3Key, req.file.mimetype || "image/jpeg");
       imageUrl = uploadResult.url;
-      imagePublicId = uploadResult.publicId;
+      imagePublicId = uploadResult.key;
     }
 
     const shouldBeActive = isActive === "true" || isActive === true;
@@ -143,9 +146,9 @@ export const deleteAnnouncement = async (req, res) => {
       });
     }
 
-    // Delete image from Cloudinary if it exists
-    if (announcement.imagePublicId) {
-      await deleteFromCloudinary(announcement.imagePublicId, "image");
+    // Delete image from S3 if it exists
+    if (announcement.imagePublicId || announcement.imageUrl) {
+      await deleteFileFromS3(announcement.imagePublicId || announcement.imageUrl);
     }
 
     // Delete from Database

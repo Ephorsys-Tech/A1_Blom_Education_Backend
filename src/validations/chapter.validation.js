@@ -61,16 +61,11 @@ export const updateChapterSchema = z.object({
     (val) => (val === "" || val === undefined ? undefined : val),
     z.coerce.number().int("Sort order must be an integer").optional()
   ),
-
-  isActive: z.preprocess(
-    (val) => (val === "true" ? true : val === "false" ? false : val),
-    z.boolean().optional()
-  ),
 });
 
 /**
  * Validation schema for Chapter query parameters
  */
 export const getChaptersQuerySchema = z.object({
-  subject: objectIdSchema,
+  subject: objectIdSchema.optional(),
 });

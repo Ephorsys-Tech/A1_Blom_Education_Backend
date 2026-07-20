@@ -14,8 +14,8 @@ const router = express.Router();
 router.get("/", getReels);
 
 // Admin / protected routes
-router.post("/upload", protect, upload.single("thumbnail"), uploadReel);
-router.put("/:id", protect, upload.single("thumbnail"), updateReel);
+router.post("/upload", protect, upload.any(), uploadReel);
+router.put("/:id", protect, upload.any(), updateReel);
 router.delete("/:id", protect, deleteReel);
 
 export default router;

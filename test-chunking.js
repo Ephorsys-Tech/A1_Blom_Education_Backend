@@ -23,6 +23,7 @@ const runTest = async () => {
       console.log("Creating dummy chapter...");
       chapter = await Chapter.create({
         name: "Test Chapter",
+        chapterNumber: 1,
         subject: new mongoose.Types.ObjectId(),
       });
     }

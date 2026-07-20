@@ -3,15 +3,22 @@ import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
 
-// Initialize S3 client
-const s3Client = new S3Client({
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-  region: process.env.AWS_REGION,
-});
+dotenv.config();
+
+// Initialize S3 client helper
+const getS3Client = () => {
+  return new S3Client({
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_KEY,
+    },
+    region: process.env.AWS_REGION || 'ap-southeast-2',
+  });
+};
+
+const s3Client = getS3Client();
 
 /**
  * Get Content-Type based on extension

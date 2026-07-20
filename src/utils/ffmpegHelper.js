@@ -64,12 +64,12 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
           { name: '1080p', w: 1920, h: 1080, bv: '5000k', ba: '192k' }
         ];
 
-        // Filter qualities based on source video height
+        // Filter qualities based on source video height (generate at least 2 variants for adaptive switching)
         let qualities = availableQualities.filter(q => sourceHeight >= q.h);
         
-        // Ensure at least one quality is generated if the video is very small
-        if (qualities.length === 0) {
-          qualities = [availableQualities[0]];
+        // Ensure at least 2 quality variants (480p & 720p) are always generated for adaptive bitrate switching
+        if (qualities.length < 2) {
+          qualities = availableQualities.slice(0, Math.max(2, qualities.length));
         }
 
         // Map streams for each quality
@@ -78,9 +78,9 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
           if (hasAudio) options.push('-map', '0:a:0');
         });
 
-        // Add encoding settings for each quality
+        // Add encoding settings for each quality (scale by height, keeping even width for H.264)
         qualities.forEach((q, i) => {
-          options.push(`-c:v:${i}`, 'libx264', `-b:v:${i}`, q.bv, `-filter:v:${i}`, `scale=w=${q.w}:h=${q.h}`);
+          options.push(`-c:v:${i}`, 'libx264', `-b:v:${i}`, q.bv, `-filter:v:${i}`, `scale=-2:${q.h}`);
           if (hasAudio) options.push(`-c:a:${i}`, 'aac', `-b:a:${i}`, q.ba);
         });
 

@@ -7,7 +7,7 @@ import {
 } from "../../controllers/appController/lecture.controller.js";
 import protect, { authorize } from "../../middleware/auth.middleware.js";
 import { isAuthenticated } from "../../middleware/isAuthenticated.js";
-import upload from "../../middleware/multer.middleware.js";
+import { uploadVideoDisk } from "../../middleware/multer.middleware.js";
 import { validate } from "../../middleware/validate.middleware.js";
 import {
   createLectureSchema,
@@ -30,7 +30,7 @@ router.post(
   "/",
   protect,
   authorize("admin", "app-manager"),
-  upload.single("video"),
+  uploadVideoDisk.single("video"),
   validate({ body: createLectureSchema }),
   createLecture
 );
@@ -38,7 +38,7 @@ router.put(
   "/:id",
   protect,
   authorize("admin", "app-manager"),
-  upload.single("video"),
+  uploadVideoDisk.single("video"),
   validate({ params: paramIdSchema, body: updateLectureSchema }),
   updateLecture
 );

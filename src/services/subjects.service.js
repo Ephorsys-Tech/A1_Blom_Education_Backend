@@ -1,9 +1,5 @@
 import Subject from "../model/appModel/subjects.model.js";
 import Classes from "../model/appModel/classes.model.js";
-import {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-} from "../config/cloudinary.config.js";
 
 // ==========================================
 // CREATE SUBJECT Service
@@ -99,10 +95,6 @@ export const deleteSubjectService = async (id) => {
     throw error;
   }
 
-  // Delete thumbnail from Cloudinary if exists
-  if (subject.thumbnail && subject.thumbnail.public_id) {
-    await deleteFromCloudinary(subject.thumbnail.public_id, "image");
-  }
 
   const classesId = subject.classes;
 

@@ -19,11 +19,6 @@ const lectureSchema = new mongoose.Schema(
       required: [true, "Lecture video URL is required"],
     },
 
-    videoPublicId: {
-      type: String,
-      default: "",
-    },
-
     duration: {
       type: Number,
       default: 0, // In seconds

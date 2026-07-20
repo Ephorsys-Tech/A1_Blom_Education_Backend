@@ -1,7 +1,6 @@
 import Chapter from "../model/appModel/chapter.model.js";
 import Subject from "../model/appModel/subjects.model.js";
 import Lecture from "../model/appModel/lecture.model.js";
-import { deleteFromCloudinary } from "../config/cloudinary.config.js";
 
 // ==========================================
 // CREATE CHAPTER Service
@@ -101,14 +100,8 @@ export const deleteChapterService = async (id) => {
     throw error;
   }
 
-  // Find and delete all lectures in this chapter, cleaning up their Cloudinary videos
-  const lectures = await Lecture.find({ chapter: id });
-  for (const lecture of lectures) {
-    if (lecture.videoPublicId) {
-      await deleteFromCloudinary(lecture.videoPublicId, "video");
-    }
-    await Lecture.findByIdAndDelete(lecture._id);
-  }
+  // Find and delete all lectures in this chapter
+  await Lecture.deleteMany({ chapter: id });
 
   await Chapter.findByIdAndDelete(id);
   return true;

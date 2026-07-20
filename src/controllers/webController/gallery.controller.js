@@ -1,5 +1,6 @@
 import GalleryModel from "../../model/webModel/gallery.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../../config/cloudinary.config.js";
+import { uploadBufferToS3, deleteFileFromS3 } from "../../utils/s3Helper.js";
+import path from "path";
 
 // Upload Gallery Image
 export const uploadImage = async (req, res) => {
@@ -13,12 +14,14 @@ export const uploadImage = async (req, res) => {
       });
     }
 
-    // Upload image to Cloudinary
-    const uploadResult = await uploadToCloudinary(req.file.buffer, "gallery", "image");
+    // Upload image to S3
+    const ext = path.extname(req.file.originalname || "") || ".jpg";
+    const s3Key = `gallery/image-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    const uploadResult = await uploadBufferToS3(req.file.buffer, s3Key, req.file.mimetype || "image/jpeg");
 
     const galleryItem = await GalleryModel.create({
       imageUrl: uploadResult.url,
-      imagePublicId: uploadResult.publicId,
+      imagePublicId: uploadResult.key,
       title: title || "",
     });
 
@@ -50,9 +53,9 @@ export const deleteImage = async (req, res) => {
       });
     }
 
-    // Delete image from Cloudinary
-    if (galleryItem.imagePublicId) {
-      await deleteFromCloudinary(galleryItem.imagePublicId, "image");
+    // Delete image from S3
+    if (galleryItem.imagePublicId || galleryItem.imageUrl) {
+      await deleteFileFromS3(galleryItem.imagePublicId || galleryItem.imageUrl);
     }
 
     // Delete from Database

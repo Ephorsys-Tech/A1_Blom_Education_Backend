@@ -22,7 +22,7 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
 
     // Use forward slashes for ffmpeg output paths to avoid escaping issues
     const outDirPosix = outputDir.replace(/\\/g, '/');
-    const segmentPattern = `${outDirPosix}/stream_%v_data%03d.ts`;
+    const segmentPattern = `${outDirPosix}/stream_%v_data%05d.ts`;
     const playlistPattern = path.join(outputDir, 'stream_%v.m3u8').replace(/\\/g, '/');
 
     // Determine if video has audio by parsing ffmpeg -i output
@@ -50,11 +50,12 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
         }
 
         const options = [
-          '-preset', 'veryfast',
+          '-preset', 'ultrafast',
           '-g', '48',
           '-sc_threshold', '0',
           '-max_muxing_queue_size', '4096',
-          '-threads', '4'
+          '-threads', '0', // Use all available CPU cores for maximum speed
+          '-sn' // Ignore embedded subtitles to prevent HLS WebVTT muxer exit errors
         ];
 
         // Define available qualities
@@ -88,6 +89,7 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
           '-f', 'hls',
           '-hls_time', `${chunkDuration}`,
           '-hls_playlist_type', 'vod',
+          '-hls_list_size', '0',
           '-hls_flags', 'independent_segments',
           '-hls_segment_type', 'mpegts',
           '-hls_segment_filename', segmentPattern

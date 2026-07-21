@@ -13,6 +13,11 @@ const lectureSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    thumbnailUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
 
     videoUrl: {
       type: String,
@@ -34,6 +39,11 @@ const lectureSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Subject",
       required: [true, "Subject reference is required"],
+    },
+    classes: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Classes",
+      required: [true, "Class reference is required"],
     },
 
     isPreview: {

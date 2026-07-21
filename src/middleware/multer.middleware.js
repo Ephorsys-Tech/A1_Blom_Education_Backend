@@ -40,13 +40,13 @@ const diskStorage = multer.diskStorage({
 export const uploadVideoDisk = multer({
   storage: diskStorage,
   limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB limit for videos
+    fileSize: (process.env.MAX_VIDEO_SIZE_MB ? parseInt(process.env.MAX_VIDEO_SIZE_MB, 10) : 5000) * 1024 * 1024, // Default 5GB limit for videos
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("video/")) {
+    if (file.mimetype.startsWith("video/") || file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
-      cb(new Error("Only video files are allowed!"), false);
+      cb(new Error("Only video or image files are allowed!"), false);
     }
   },
 });

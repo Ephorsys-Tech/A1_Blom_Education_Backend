@@ -11,7 +11,7 @@ import {
 // ==========================================
 export const createLecture = async (req, res, next) => {
   try {
-    const lecture = await createLectureService(req.body, req.file);
+    const lecture = await createLectureService(req.body, req.files || req.file);
     return respond(res, 201, "Lecture video uploaded successfully.", lecture);
   } catch (error) {
     next(error);
@@ -24,7 +24,7 @@ export const createLecture = async (req, res, next) => {
 export const updateLecture = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const lecture = await updateLectureService(id, req.body, req.file);
+    const lecture = await updateLectureService(id, req.body, req.files || req.file);
     return respond(res, 200, "Lecture updated successfully.", lecture);
   } catch (error) {
     next(error);

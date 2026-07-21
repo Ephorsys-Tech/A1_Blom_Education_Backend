@@ -23,6 +23,12 @@ const router = express.Router();
 // ==========================================
 router.get("/", isAuthenticated, validate({ query: getLecturesQuerySchema }), getLectures);
 
+const uploadLectureMedia = uploadVideoDisk.fields([
+  { name: "video", maxCount: 1 },
+  { name: "thumbnail", maxCount: 1 },
+  { name: "thumbnailUrl", maxCount: 1 },
+]);
+
 // ==========================================
 // ADMIN ROUTES (Protected)
 // ==========================================
@@ -30,7 +36,7 @@ router.post(
   "/",
   protect,
   authorize("admin", "app-manager"),
-  uploadVideoDisk.single("video"),
+  uploadLectureMedia,
   validate({ body: createLectureSchema }),
   createLecture
 );
@@ -38,7 +44,7 @@ router.put(
   "/:id",
   protect,
   authorize("admin", "app-manager"),
-  uploadVideoDisk.single("video"),
+  uploadLectureMedia,
   validate({ params: paramIdSchema, body: updateLectureSchema }),
   updateLecture
 );

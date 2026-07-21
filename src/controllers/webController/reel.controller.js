@@ -25,10 +25,11 @@ export const uploadReel = async (req, res) => {
     let thumbnailPublicId = "";
 
     // Upload thumbnail cover image to S3 if provided
-    if (req.file) {
-      const ext = path.extname(req.file.originalname || "") || ".jpg";
+    const file = req.file || (req.files && req.files[0]);
+    if (file) {
+      const ext = path.extname(file.originalname || "") || ".jpg";
       const s3Key = `reels/thumbnail-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
-      const uploadResult = await uploadBufferToS3(req.file.buffer, s3Key, req.file.mimetype || "image/jpeg");
+      const uploadResult = await uploadBufferToS3(file.buffer, s3Key, file.mimetype || "image/jpeg");
       thumbnailUrl = uploadResult.url;
       thumbnailPublicId = uploadResult.key;
     }
@@ -133,16 +134,17 @@ export const updateReel = async (req, res) => {
     if (videoUrl) reel.videoUrl = videoUrl.trim();
 
     // If new thumbnail cover image is uploaded
-    if (req.file) {
+    const updateFile = req.file || (req.files && req.files[0]);
+    if (updateFile) {
       // Delete old thumbnail from S3 if it exists
       if (reel.thumbnailPublicId || reel.thumbnailUrl) {
         await deleteFileFromS3(reel.thumbnailPublicId || reel.thumbnailUrl);
       }
 
       // Upload new thumbnail to S3
-      const ext = path.extname(req.file.originalname || "") || ".jpg";
+      const ext = path.extname(updateFile.originalname || "") || ".jpg";
       const s3Key = `reels/thumbnail-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
-      const uploadResult = await uploadBufferToS3(req.file.buffer, s3Key, req.file.mimetype || "image/jpeg");
+      const uploadResult = await uploadBufferToS3(updateFile.buffer, s3Key, updateFile.mimetype || "image/jpeg");
       reel.thumbnailUrl = uploadResult.url;
       reel.thumbnailPublicId = uploadResult.key;
     }

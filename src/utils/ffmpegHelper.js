@@ -22,7 +22,7 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
 
     // Use forward slashes for ffmpeg output paths to avoid escaping issues
     const outDirPosix = outputDir.replace(/\\/g, '/');
-    const segmentPattern = `${outDirPosix}/stream_%v_data%03d.ts`;
+    const segmentPattern = `${outDirPosix}/stream_%v_data%05d.ts`;
     const playlistPattern = path.join(outputDir, 'stream_%v.m3u8').replace(/\\/g, '/');
 
     // Determine if video has audio by parsing ffmpeg -i output
@@ -50,11 +50,12 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
         }
 
         const options = [
-          '-preset', 'veryfast',
+          '-preset', 'ultrafast',
           '-g', '48',
           '-sc_threshold', '0',
           '-max_muxing_queue_size', '4096',
-          '-threads', '4'
+          '-threads', '0', // Use all available CPU cores for maximum speed
+          '-sn' // Ignore embedded subtitles to prevent HLS WebVTT muxer exit errors
         ];
 
         // Define available qualities
@@ -64,12 +65,12 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
           { name: '1080p', w: 1920, h: 1080, bv: '5000k', ba: '192k' }
         ];
 
-        // Filter qualities based on source video height
+        // Filter qualities based on source video height (generate at least 2 variants for adaptive switching)
         let qualities = availableQualities.filter(q => sourceHeight >= q.h);
         
-        // Ensure at least one quality is generated if the video is very small
-        if (qualities.length === 0) {
-          qualities = [availableQualities[0]];
+        // Ensure at least 2 quality variants (480p & 720p) are always generated for adaptive bitrate switching
+        if (qualities.length < 2) {
+          qualities = availableQualities.slice(0, Math.max(2, qualities.length));
         }
 
         // Map streams for each quality
@@ -78,9 +79,9 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
           if (hasAudio) options.push('-map', '0:a:0');
         });
 
-        // Add encoding settings for each quality
+        // Add encoding settings for each quality (scale by height, keeping even width for H.264)
         qualities.forEach((q, i) => {
-          options.push(`-c:v:${i}`, 'libx264', `-b:v:${i}`, q.bv, `-filter:v:${i}`, `scale=w=${q.w}:h=${q.h}`);
+          options.push(`-c:v:${i}`, 'libx264', `-b:v:${i}`, q.bv, `-filter:v:${i}`, `scale=-2:${q.h}`);
           if (hasAudio) options.push(`-c:a:${i}`, 'aac', `-b:a:${i}`, q.ba);
         });
 
@@ -88,6 +89,7 @@ export const splitVideoIntoChunks = (inputPath, outputDir, chunkDuration) => {
           '-f', 'hls',
           '-hls_time', `${chunkDuration}`,
           '-hls_playlist_type', 'vod',
+          '-hls_list_size', '0',
           '-hls_flags', 'independent_segments',
           '-hls_segment_type', 'mpegts',
           '-hls_segment_filename', segmentPattern

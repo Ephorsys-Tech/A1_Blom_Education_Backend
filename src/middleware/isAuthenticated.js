@@ -19,7 +19,8 @@ export const isAuthenticated = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Access token is required.",
+        code: 401,
+        message: "Token expired",
       });
     }
 
@@ -32,18 +33,10 @@ export const isAuthenticated = async (req, res, next) => {
     try {
       decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
     } catch (error) {
-      if (error.name === "TokenExpiredError") {
-        return res.status(401).json({
-          success: false,
-          code: "TOKEN_EXPIRED",
-          message: "Access token expired. Please refresh your session.",
-        });
-      }
-
       return res.status(401).json({
         success: false,
-        code: "INVALID_TOKEN",
-        message: "Invalid access token.",
+        code: 401,
+        message: "Token expired",
       });
     }
 
@@ -56,7 +49,8 @@ export const isAuthenticated = async (req, res, next) => {
     if (!student) {
       return res.status(401).json({
         success: false,
-        message: "Student not found.",
+        code: 401,
+        message: "Token expired",
       });
     }
 
@@ -74,8 +68,8 @@ export const isAuthenticated = async (req, res, next) => {
     if (decoded.tv !== student.tokenVersion) {
       return res.status(401).json({
         success: false,
-        code: "INVALID_TOKEN",
-        message: "Session has been logged out.",
+        code: 401,
+        message: "Token expired",
       });
     }
 
@@ -89,7 +83,8 @@ export const isAuthenticated = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired access token.",
+      code: 401,
+      message: "Token expired",
     });
   }
 };

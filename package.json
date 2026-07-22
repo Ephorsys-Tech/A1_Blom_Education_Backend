@@ -32,6 +32,7 @@
     "multer-s3": "^3.0.1",
     "nodemailer": "^8.0.7",
     "nodemon": "^3.1.14",
+    "razorpay": "^2.9.8",
     "slugify": "^1.6.9",
     "socket.io": "^4.8.3",
     "twilio": "^6.0.2",

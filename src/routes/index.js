@@ -13,6 +13,7 @@ import classesRoutes from "./app-route/classes.route.js";
 import subjectsRoutes from "./app-route/subjects.routes.js";
 import chapterRoutes from "./app-route/chapter.route.js";
 import lectureRoutes from "./app-route/lecture.route.js";
+import paymentRoutes from "./app-route/payment.routes.js";
 
 const router = express.Router();
 
@@ -86,7 +87,9 @@ router.use("/chapters", chapterRoutes);
 // ========================================
 router.use("/lectures", lectureRoutes);
 
-
-
+// ========================================
+// Payment Routes (Razorpay Sandbox)
+// ========================================
+router.use("/payment", paymentRoutes);
 
 export default router;

@@ -4,6 +4,7 @@ import {
   updateLectureService,
   deleteLectureService,
   getLecturesService,
+  getLecturesForAdminService,
 } from "../../services/lecture.service.js";
 
 // ==========================================
@@ -63,3 +64,22 @@ export const getLectures = async (req, res, next) => {
     next(error);
   }
 };
+
+// ==========================================
+// GET LECTURES BY CHAPTER FOR ADMIN (Admin Only)
+// ==========================================
+export const getLecturesForAdmin = async (req, res, next) => {
+  try {
+    const { chapter: chapterId } = req.query;
+    const processedLectures = await getLecturesForAdminService(chapterId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lectures fetched successfully for admin.",
+      data: processedLectures,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -4,6 +4,7 @@ import {
   updateLecture,
   deleteLecture,
   getLectures,
+  getLecturesForAdmin,
 } from "../../controllers/appController/lecture.controller.js";
 import protect, { authorize } from "../../middleware/auth.middleware.js";
 import { isAuthenticated } from "../../middleware/isAuthenticated.js";
@@ -30,8 +31,16 @@ const uploadLectureMedia = uploadVideoDisk.fields([
 ]);
 
 // ==========================================
-// ADMIN ROUTES (Protected)
+// ADMIN ROUTES (Protected) get lectures & create lecture
 // ==========================================
+router.get(
+  "/admin",
+  protect,
+  authorize("admin", "app-manager"),
+  validate({ query: getLecturesQuerySchema }),
+  getLecturesForAdmin
+);
+
 router.post(
   "/",
   protect,
@@ -40,6 +49,9 @@ router.post(
   validate({ body: createLectureSchema }),
   createLecture
 );
+//=========================================
+// updateLecture
+//=========================================
 router.put(
   "/:id",
   protect,

@@ -195,18 +195,25 @@ export const updateLectureService = async (id, data, files) => {
     }
   }
 
-  if (chapterId && chapterId.toString() !== lecture.chapter.toString()) {
-    const targetChapter = await Chapter.findById(chapterId);
-    if (!targetChapter) {
-      const error = new Error("New referenced chapter not found.");
-      error.statusCode = 404;
-      throw error;
-    }
-    const targetSubject = await Subject.findById(targetChapter.subject);
-    lecture.chapter = chapterId;
-    lecture.subject = targetChapter.subject;
-    if (targetSubject && targetSubject.classes) {
-      lecture.classes = targetSubject.classes;
+  const activeChapterId = chapterId || lecture.chapter;
+  if (activeChapterId) {
+    const isChapterChanged = !lecture.chapter || activeChapterId.toString() !== lecture.chapter.toString();
+    const isMissingSubjectOrClasses = !lecture.subject || !lecture.classes;
+
+    if (isChapterChanged || isMissingSubjectOrClasses) {
+      const targetChapter = await Chapter.findById(activeChapterId);
+      if (!targetChapter) {
+        const error = new Error("Referenced chapter not found.");
+        error.statusCode = 404;
+        throw error;
+      }
+      const targetSubject = await Subject.findById(targetChapter.subject);
+      
+      lecture.chapter = activeChapterId;
+      lecture.subject = targetChapter.subject;
+      if (targetSubject && targetSubject.classes) {
+        lecture.classes = targetSubject.classes;
+      }
     }
   }
 
@@ -244,36 +251,12 @@ export const updateLectureService = async (id, data, files) => {
     }
   }
 
-  if (directVideoUrl) {
-    lecture.videoUrl = directVideoUrl;
-    lecture.duration = 0;
-  }
-
-  if (videoFile) {
-    const durationSec = Number(chunkDuration) || 10;
-    const processResult = await processUploadedVideo(videoFile.path, durationSec);
-    
-    const s3Prefix = `videos/subject-${lecture.subject}/chapter-${lecture.chapter}/lecture-${lecture._id}`;
-    const s3Urls = await uploadDirectoryToS3(processResult.outputDir, s3Prefix);
-
-    const masterUrl = s3Urls.find(url => url.endsWith('master.m3u8'));
-    
-    if (!masterUrl) {
-      throw new Error("Failed to generate or upload master playlist.");
-    }
-
-    lecture.videoUrl = masterUrl;
-    lecture.duration = processResult.duration || 0;
-
+  // Delete temporary video file if uploaded (since video updates are not allowed via this endpoint)
+  if (videoFile && fs.existsSync(videoFile.path)) {
     try {
-      if (fs.existsSync(processResult.outputDir)) {
-        fs.rmSync(processResult.outputDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
-      }
-      if (fs.existsSync(videoFile.path)) {
-        fs.unlinkSync(videoFile.path);
-      }
+      fs.unlinkSync(videoFile.path);
     } catch (cleanupErr) {
-      console.error("Error cleaning up local files:", cleanupErr);
+      console.error("Error cleaning up uploaded video file in updateLectureService:", cleanupErr);
     }
   }
 
@@ -359,3 +342,35 @@ export const getLecturesService = async (chapterId, studentId) => {
     processedLectures,
   };
 };
+
+// ==========================================
+// GET LECTURES BY CHAPTER FOR ADMIN Service
+// ==========================================
+export const getLecturesForAdminService = async (chapterId) => {
+  if (!chapterId) {
+    const error = new Error("Chapter query parameter is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const chapterObj = await Chapter.findById(chapterId);
+  if (!chapterObj) {
+    const error = new Error("Chapter not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Fetch all lectures (active/inactive) for this chapter for admin visibility
+  const lectures = await Lecture.find({ chapter: chapterId })
+    .sort({ sortOrder: 1, createdAt: 1 });
+
+  // For admin, do not hide videoUrl or lock the lecture
+  const processedLectures = lectures.map((lecture) => {
+    const lectureJSON = lecture.toJSON();
+    lectureJSON.isLocked = false;
+    return lectureJSON;
+  });
+
+  return processedLectures;
+};
+

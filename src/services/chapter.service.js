@@ -1,7 +1,6 @@
 import Chapter from "../model/appModel/chapter.model.js";
 import Subject from "../model/appModel/subjects.model.js";
 import Lecture from "../model/appModel/lecture.model.js";
-import { deleteFromCloudinary } from "../config/cloudinary.config.js";
 
 // ==========================================
 // CREATE CHAPTER Service
@@ -46,7 +45,7 @@ export const createChapterService = async (data) => {
 // UPDATE CHAPTER Service
 // ==========================================
 export const updateChapterService = async (id, data) => {
-  const { name, chapterNumber, description, subject: subjectId, sortOrder, isActive } = data || {};
+  const { name, chapterNumber, description, subject: subjectId, sortOrder } = data || {};
 
   const chapter = await Chapter.findById(id);
   if (!chapter) {
@@ -84,7 +83,6 @@ export const updateChapterService = async (id, data) => {
   if (name !== undefined) chapter.name = name;
   if (description !== undefined) chapter.description = description;
   if (sortOrder !== undefined) chapter.sortOrder = sortOrder;
-  if (isActive !== undefined) chapter.isActive = isActive;
 
   await chapter.save();
   return chapter;
@@ -101,14 +99,8 @@ export const deleteChapterService = async (id) => {
     throw error;
   }
 
-  // Find and delete all lectures in this chapter, cleaning up their Cloudinary videos
-  const lectures = await Lecture.find({ chapter: id });
-  for (const lecture of lectures) {
-    if (lecture.videoPublicId) {
-      await deleteFromCloudinary(lecture.videoPublicId, "video");
-    }
-    await Lecture.findByIdAndDelete(lecture._id);
-  }
+  // Find and delete all lectures in this chapter
+  await Lecture.deleteMany({ chapter: id });
 
   await Chapter.findByIdAndDelete(id);
   return true;
@@ -117,34 +109,32 @@ export const deleteChapterService = async (id) => {
 // ==========================================
 // GET ACTIVE CHAPTERS Service
 // ==========================================
+// export const getChaptersService = async (subjectId) => {
+//   if (!subjectId) {
+//     const error = new Error("Subject query parameter is required.");
+//     error.statusCode = 400;
+//     throw error;
+//   }
+
+//   const chapters = await Chapter.find({ subject: subjectId, isActive: true })
+//     .sort({ sortOrder: 1, chapterNumber: 1 });
+
+//   return chapters;
+// };
+
 export const getChaptersService = async (subjectId) => {
-  if (!subjectId) {
-    const error = new Error("Subject query parameter is required.");
-    error.statusCode = 400;
-    throw error;
+  const filter = { isActive: true };
+
+  if (subjectId) {
+    filter.subject = subjectId;
   }
 
-  const chapters = await Chapter.find({ subject: subjectId, isActive: true })
+  const chapters = await Chapter.find(filter)
     .sort({ sortOrder: 1, chapterNumber: 1 });
 
   return chapters;
 };
 
-// ==========================================
-// GET ALL CHAPTERS (Admin Only) Service
-// ==========================================
-export const getAdminChaptersService = async (subjectId) => {
-  if (!subjectId) {
-    const error = new Error("Subject query parameter is required.");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const chapters = await Chapter.find({ subject: subjectId })
-    .sort({ sortOrder: 1, chapterNumber: 1 });
-
-  return chapters;
-};
 
 // ==========================================
 // GET CHAPTER BY ID Service

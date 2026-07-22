@@ -1,10 +1,8 @@
 import ClassModel from "../../model/webModel/class.model.js";
 import SubjectModel from "../../model/webModel/subject.model.js";
 import ChapterModel from "../../model/webModel/chapter.model.js";
-import {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-} from "../../config/cloudinary.config.js";
+import { uploadBufferToS3, deleteFileFromS3 } from "../../utils/s3Helper.js";
+import path from "path";
 import { z } from "zod";
 
 // ==========================================
@@ -80,13 +78,15 @@ export const createClass = async (req, res) => {
     let imagePublicId = null;
 
     if (req.file) {
-      const uploadResult = await uploadToCloudinary(
+      const ext = path.extname(req.file.originalname || "") || ".jpg";
+      const s3Key = `classes/image-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+      const uploadResult = await uploadBufferToS3(
         req.file.buffer,
-        "classes",
-        "auto",
+        s3Key,
+        req.file.mimetype || "image/jpeg"
       );
       imageUrl = uploadResult.url;
-      imagePublicId = uploadResult.publicId;
+      imagePublicId = uploadResult.key;
     }
 
     const newClass = await ClassModel.create({
@@ -216,22 +216,24 @@ export const updateClass = async (req, res) => {
     // Handle Class cover image upload/replacement
     if (req.file) {
       // Delete old image if exists
-      if (classData.imagePublicId) {
+      if (classData.imagePublicId || classData.imageUrl) {
         try {
-          await deleteFromCloudinary(classData.imagePublicId, "image");
-        } catch (cloudinaryErr) {
-          console.error("Error deleting old class image:", cloudinaryErr);
+          await deleteFileFromS3(classData.imagePublicId || classData.imageUrl);
+        } catch (s3Err) {
+          console.error("Error deleting old class image:", s3Err);
         }
       }
 
       // Upload new image
-      const uploadResult = await uploadToCloudinary(
+      const ext = path.extname(req.file.originalname || "") || ".jpg";
+      const s3Key = `classes/image-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+      const uploadResult = await uploadBufferToS3(
         req.file.buffer,
-        "classes",
-        "auto",
+        s3Key,
+        req.file.mimetype || "image/jpeg"
       );
       classData.imageUrl = uploadResult.url;
-      classData.imagePublicId = uploadResult.publicId;
+      classData.imagePublicId = uploadResult.key;
     }
 
     Object.assign(classData, result.data);
@@ -264,14 +266,14 @@ export const deleteClass = async (req, res) => {
       });
     }
 
-    // Delete class cover image from Cloudinary if exists
-    if (classData.imagePublicId) {
+    // Delete class cover image from S3 if exists
+    if (classData.imagePublicId || classData.imageUrl) {
       try {
-        await deleteFromCloudinary(classData.imagePublicId, "image");
-      } catch (cloudinaryErr) {
+        await deleteFileFromS3(classData.imagePublicId || classData.imageUrl);
+      } catch (s3Err) {
         console.error(
-          "Error deleting class image from Cloudinary:",
-          cloudinaryErr,
+          "Error deleting class image from S3:",
+          s3Err,
         );
       }
     }
@@ -279,14 +281,14 @@ export const deleteClass = async (req, res) => {
     // Find all subjects in this class
     const subjects = await SubjectModel.find({ classId: id });
     for (const subject of subjects) {
-      // Delete textbook PDF from Cloudinary if exists
-      if (subject.pdfPublicId) {
+      // Delete textbook PDF from S3 if exists
+      if (subject.pdfPublicId || subject.pdfUrl) {
         try {
-          await deleteFromCloudinary(subject.pdfPublicId, "image");
-        } catch (cloudinaryErr) {
+          await deleteFileFromS3(subject.pdfPublicId || subject.pdfUrl);
+        } catch (s3Err) {
           console.error(
-            "Error deleting subject PDF from Cloudinary:",
-            cloudinaryErr,
+            "Error deleting subject PDF from S3:",
+            s3Err,
           );
         }
       }
@@ -360,7 +362,7 @@ export const createSubject = async (req, res) => {
     let pdfUrl = null;
     let pdfPublicId = null;
 
-    // Upload PDF to Cloudinary
+    // Upload PDF to S3
     if (req.file) {
       if (req.file.mimetype !== "application/pdf") {
         return res.status(400).json({
@@ -369,14 +371,16 @@ export const createSubject = async (req, res) => {
         });
       }
 
-      const uploadResult = await uploadToCloudinary(
+      const ext = path.extname(req.file.originalname || "") || ".pdf";
+      const s3Key = `textbooks/pdf-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+      const uploadResult = await uploadBufferToS3(
         req.file.buffer,
-        "textbooks",
-        "raw", // ✅ PDF ke liye raw
+        s3Key,
+        "application/pdf"
       );
 
       pdfUrl = uploadResult.url;
-      pdfPublicId = uploadResult.publicId;
+      pdfPublicId = uploadResult.key;
     }
 
     const subject = await SubjectModel.create({
@@ -525,22 +529,24 @@ export const updateSubject = async (req, res) => {
       }
 
       // Delete old PDF if exists
-      if (subject.pdfPublicId) {
+      if (subject.pdfPublicId || subject.pdfUrl) {
         try {
-          await deleteFromCloudinary(subject.pdfPublicId, "image");
-        } catch (cloudinaryErr) {
-          console.error("Error deleting old PDF:", cloudinaryErr);
+          await deleteFileFromS3(subject.pdfPublicId || subject.pdfUrl);
+        } catch (s3Err) {
+          console.error("Error deleting old PDF:", s3Err);
         }
       }
 
-      // Upload new PDF
-      const uploadResult = await uploadToCloudinary(
+      // Upload new PDF to S3
+      const ext = path.extname(req.file.originalname || "") || ".pdf";
+      const s3Key = `textbooks/pdf-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+      const uploadResult = await uploadBufferToS3(
         req.file.buffer,
-        "textbooks",
-        "image",
+        s3Key,
+        "application/pdf"
       );
       subject.pdfUrl = uploadResult.url;
-      subject.pdfPublicId = uploadResult.publicId;
+      subject.pdfPublicId = uploadResult.key;
     }
 
     Object.assign(subject, result.data);
@@ -573,8 +579,8 @@ export const deleteSubjectPdf = async (req, res) => {
       });
     }
 
-    if (subject.pdfPublicId) {
-      await deleteFromCloudinary(subject.pdfPublicId, "image");
+    if (subject.pdfPublicId || subject.pdfUrl) {
+      await deleteFileFromS3(subject.pdfPublicId || subject.pdfUrl);
     }
 
     subject.pdfUrl = null;
@@ -608,12 +614,12 @@ export const deleteSubject = async (req, res) => {
       });
     }
 
-    // Delete PDF from Cloudinary
-    if (subject.pdfPublicId) {
+    // Delete PDF from S3
+    if (subject.pdfPublicId || subject.pdfUrl) {
       try {
-        await deleteFromCloudinary(subject.pdfPublicId, "image");
-      } catch (cloudinaryErr) {
-        console.error("Error deleting PDF from Cloudinary:", cloudinaryErr);
+        await deleteFileFromS3(subject.pdfPublicId || subject.pdfUrl);
+      } catch (s3Err) {
+        console.error("Error deleting PDF from S3:", s3Err);
       }
     }
 

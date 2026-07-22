@@ -4,7 +4,6 @@ import {
   updateChapterService,
   deleteChapterService,
   getChaptersService,
-  getAdminChaptersService,
   getChapterByIdService,
 } from "../../services/chapter.service.js";
 
@@ -59,18 +58,6 @@ export const getChapters = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// GET ALL CHAPTERS (Admin Only)
-// ==========================================
-export const getAdminChapters = async (req, res, next) => {
-  try {
-    const { subject: subjectId } = req.query;
-    const chapters = await getAdminChaptersService(subjectId);
-    return respond(res, 200, "All chapters fetched successfully.", chapters);
-  } catch (error) {
-    next(error);
-  }
-};
 
 // ==========================================
 // GET CHAPTER BY ID (Public / Students)

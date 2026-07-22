@@ -4,7 +4,6 @@ import {
   updateChapter,
   deleteChapter,
   getChapters,
-  getAdminChapters,
   getChapterById,
 } from "../../controllers/appController/chapter.controller.js";
 import protect, { authorize } from "../../middleware/auth.middleware.js";
@@ -35,13 +34,6 @@ router.post(
   validate({ body: createChapterSchema }),
   createChapter
 );
-// router.get(
-//   "/admin/all",
-//   protect,
-//   authorize("admin", "app-manager"),
-//   validate({ query: getChaptersQuerySchema }),
-//   getAdminChapters
-// );// may be delete
 router.put(
   "/:id",
   protect,

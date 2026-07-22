@@ -1,8 +1,6 @@
 import BlogModel from "../../model/webModel/blog.model.js";
-import {
-   uploadToCloudinary,
-   deleteFromCloudinary,
- } from "../../config/cloudinary.config.js";
+import { uploadBufferToS3, deleteFileFromS3 } from "../../utils/s3Helper.js";
+import path from "path";
 import { z } from "zod";
 
 const CreateBlogData = z.object({
@@ -34,18 +32,20 @@ export const createBlog = async (req, res) => {
       });
     }
 
-    // Upload image to Cloudinary
-    const uploadResult = await uploadToCloudinary(
+    // Upload image to S3
+    const ext = path.extname(req.file.originalname || "") || ".jpg";
+    const s3Key = `blogs/image-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    const uploadResult = await uploadBufferToS3(
       req.file.buffer,
-      "blogs",
-      "image",
+      s3Key,
+      req.file.mimetype || "image/jpeg"
     );
 
     const blog = await BlogModel.create({
       title,
       description,
       imageUrl: uploadResult.url,
-      imagePublicId: uploadResult.publicId,
+      imagePublicId: uploadResult.key,
     });
 
     return res.status(201).json({
@@ -76,9 +76,9 @@ export const deleteBlog = async (req, res) => {
       });
     }
 
-    // Delete image from Cloudinary
-    if (blog.imagePublicId) {
-      await deleteFromCloudinary(blog.imagePublicId, "image");
+    // Delete image from S3
+    if (blog.imagePublicId || blog.imageUrl) {
+      await deleteFileFromS3(blog.imagePublicId || blog.imageUrl);
     }
 
     // Delete from Database

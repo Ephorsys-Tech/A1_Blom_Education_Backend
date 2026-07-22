@@ -4,6 +4,7 @@ import {
   updateLectureService,
   deleteLectureService,
   getLecturesService,
+  getLecturesForAdminService,
 } from "../../services/lecture.service.js";
 
 // ==========================================
@@ -11,7 +12,7 @@ import {
 // ==========================================
 export const createLecture = async (req, res, next) => {
   try {
-    const lecture = await createLectureService(req.body, req.file);
+    const lecture = await createLectureService(req.body, req.files || req.file);
     return respond(res, 201, "Lecture video uploaded successfully.", lecture);
   } catch (error) {
     next(error);
@@ -24,7 +25,7 @@ export const createLecture = async (req, res, next) => {
 export const updateLecture = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const lecture = await updateLectureService(id, req.body, req.file);
+    const lecture = await updateLectureService(id, req.body, req.files || req.file);
     return respond(res, 200, "Lecture updated successfully.", lecture);
   } catch (error) {
     next(error);
@@ -63,3 +64,22 @@ export const getLectures = async (req, res, next) => {
     next(error);
   }
 };
+
+// ==========================================
+// GET LECTURES BY CHAPTER FOR ADMIN (Admin Only)
+// ==========================================
+export const getLecturesForAdmin = async (req, res, next) => {
+  try {
+    const { chapter: chapterId } = req.query;
+    const processedLectures = await getLecturesForAdminService(chapterId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lectures fetched successfully for admin.",
+      data: processedLectures,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

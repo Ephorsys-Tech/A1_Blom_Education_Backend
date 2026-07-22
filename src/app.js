@@ -23,16 +23,20 @@ app.use(
 // ---------------------------------------------
 // Middleware
 // ---------------------------------------------
-app.use(express.json({ limit: "20mb" }));
+app.use(express.json({ limit: "5000mb" }));
 app.use(
   express.urlencoded({
     extended: true,
-    limit: "20mb",
+    limit: "5000mb",
   }),
 );
 
 app.use(cookieParser());
 app.use(morgan("dev"));
+
+// Serve videos folder statically for playing/retrieving chunk files
+import path from "path";
+app.use("/videos", express.static(path.resolve("videos")));
 
 // Import rate limiter
 

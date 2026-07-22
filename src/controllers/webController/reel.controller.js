@@ -1,5 +1,6 @@
 import ReelModel from "../../model/webModel/reel.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../../config/cloudinary.config.js";
+import { uploadBufferToS3, deleteFileFromS3 } from "../../utils/s3Helper.js";
+import path from "path";
 
 // Upload Reel
 export const uploadReel = async (req, res) => {
@@ -23,11 +24,14 @@ export const uploadReel = async (req, res) => {
     let thumbnailUrl = "";
     let thumbnailPublicId = "";
 
-    // Upload thumbnail cover image to Cloudinary if provided
-    if (req.file) {
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "reels", "image");
+    // Upload thumbnail cover image to S3 if provided
+    const file = req.file || (req.files && req.files[0]);
+    if (file) {
+      const ext = path.extname(file.originalname || "") || ".jpg";
+      const s3Key = `reels/thumbnail-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+      const uploadResult = await uploadBufferToS3(file.buffer, s3Key, file.mimetype || "image/jpeg");
       thumbnailUrl = uploadResult.url;
-      thumbnailPublicId = uploadResult.publicId;
+      thumbnailPublicId = uploadResult.key;
     }
 
     const reel = await ReelModel.create({
@@ -67,14 +71,14 @@ export const deleteReel = async (req, res) => {
       });
     }
 
-    // Delete thumbnail from Cloudinary
-    if (reel.thumbnailPublicId) {
-      await deleteFromCloudinary(reel.thumbnailPublicId, "image");
+    // Delete thumbnail from S3
+    if (reel.thumbnailPublicId || reel.thumbnailUrl) {
+      await deleteFileFromS3(reel.thumbnailPublicId || reel.thumbnailUrl);
     }
 
     // Delete legacy video if any exists
     if (reel.videoPublicId) {
-      await deleteFromCloudinary(reel.videoPublicId, "video");
+      await deleteFileFromS3(reel.videoPublicId);
     }
 
     // Delete from Database
@@ -130,16 +134,19 @@ export const updateReel = async (req, res) => {
     if (videoUrl) reel.videoUrl = videoUrl.trim();
 
     // If new thumbnail cover image is uploaded
-    if (req.file) {
-      // Delete old thumbnail from Cloudinary if it exists
-      if (reel.thumbnailPublicId) {
-        await deleteFromCloudinary(reel.thumbnailPublicId, "image");
+    const updateFile = req.file || (req.files && req.files[0]);
+    if (updateFile) {
+      // Delete old thumbnail from S3 if it exists
+      if (reel.thumbnailPublicId || reel.thumbnailUrl) {
+        await deleteFileFromS3(reel.thumbnailPublicId || reel.thumbnailUrl);
       }
 
-      // Upload new thumbnail
-      const uploadResult = await uploadToCloudinary(req.file.buffer, "reels", "image");
+      // Upload new thumbnail to S3
+      const ext = path.extname(updateFile.originalname || "") || ".jpg";
+      const s3Key = `reels/thumbnail-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+      const uploadResult = await uploadBufferToS3(updateFile.buffer, s3Key, updateFile.mimetype || "image/jpeg");
       reel.thumbnailUrl = uploadResult.url;
-      reel.thumbnailPublicId = uploadResult.publicId;
+      reel.thumbnailPublicId = uploadResult.key;
     }
 
     await reel.save();

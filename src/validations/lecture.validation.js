@@ -16,6 +16,11 @@ export const createLectureSchema = z.object({
     .optional()
     .default(""),
 
+  thumbnailUrl: z
+    .string()
+    .trim()
+    .optional(),
+
   videoUrl: z
     .string()
     .trim()
@@ -23,6 +28,8 @@ export const createLectureSchema = z.object({
     .optional(),
 
   chapter: objectIdSchema,
+
+  classes: objectIdSchema.optional(),
 
   isPreview: z.preprocess(
     (val) => (val === "true" || val === true ? true : false),
@@ -50,6 +57,11 @@ export const updateLectureSchema = z.object({
     .trim()
     .optional(),
 
+  thumbnailUrl: z
+    .string()
+    .trim()
+    .optional(),
+
   videoUrl: z
     .string()
     .trim()
@@ -57,6 +69,8 @@ export const updateLectureSchema = z.object({
     .optional(),
 
   chapter: objectIdSchema.optional(),
+
+  classes: objectIdSchema.optional(),
 
   isPreview: z.preprocess(
     (val) => (val === "true" || val === true ? true : val === "false" || val === false ? false : val),

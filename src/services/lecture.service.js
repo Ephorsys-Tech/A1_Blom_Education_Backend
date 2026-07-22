@@ -1,19 +1,51 @@
+import mongoose from "mongoose";
 import Lecture from "../model/appModel/lecture.model.js";
 import Chapter from "../model/appModel/chapter.model.js";
 import Subject from "../model/appModel/subjects.model.js";
+import Classes from "../model/appModel/classes.model.js";
 import Student from "../model/appModel/student.model.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.config.js";
+import { processUploadedVideo } from "./video.service.js";
+import { uploadDirectoryToS3, uploadFileToS3 } from "../utils/s3Helper.js";
+import fs from "fs";
+import path from "path";
 
 // ==========================================
 // CREATE LECTURE Service
 // ==========================================
-export const createLectureService = async (data, file) => {
-  const { title, description, chapter: chapterId, isPreview, sortOrder, videoUrl: directVideoUrl } = data || {};
+export const createLectureService = async (data, files) => {
+  const {
+    title,
+    description,
+    chapter: chapterId,
+    classes: inputClassesId,
+    thumbnailUrl: directThumbnailUrl,
+    videoUrl: directVideoUrl,
+    isPreview,
+    sortOrder,
+    chunkDuration,
+  } = data || {};
 
   if (!title || !chapterId) {
     const error = new Error("Title and chapter reference are required.");
     error.statusCode = 400;
     throw error;
+  }
+
+  // Parse file references (supports multer fields or single file)
+  let videoFile = null;
+  let thumbnailFile = null;
+
+  if (files) {
+    if (files.video) {
+      videoFile = Array.isArray(files.video) ? files.video[0] : files.video;
+    } else if (files.path) {
+      videoFile = files;
+    }
+
+    if (files.thumbnail || files.thumbnailUrl) {
+      const thumb = files.thumbnail || files.thumbnailUrl;
+      thumbnailFile = Array.isArray(thumb) ? thumb[0] : thumb;
+    }
   }
 
   // Verify chapter exists and retrieve its subject
@@ -24,16 +56,80 @@ export const createLectureService = async (data, file) => {
     throw error;
   }
 
-  let videoUrl = directVideoUrl || "";
-  let videoPublicId = "";
-  let duration = 0;
+  const targetSubject = await Subject.findById(targetChapter.subject);
+  if (!targetSubject) {
+    const error = new Error("Referenced subject not found.");
+    error.statusCode = 404;
+    throw error;
+  }
 
-  if (file) {
-    // Upload video buffer to Cloudinary
-    const uploadResult = await uploadToCloudinary(file.buffer, "lectures", "video");
-    videoUrl = uploadResult.url;
-    videoPublicId = uploadResult.publicId;
-    duration = uploadResult.duration || 0;
+  // Determine class ID (passed directly or inherited from Subject)
+  let classesId = inputClassesId || targetSubject.classes;
+  if (!classesId) {
+    const error = new Error("Class reference is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const targetClass = await Classes.findById(classesId);
+  if (!targetClass) {
+    const error = new Error("Referenced class not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  let videoUrl = directVideoUrl || "";
+  let duration = 0;
+  let thumbnailUrl = directThumbnailUrl || "";
+  
+  // Pre-generate lecture ID for structured S3 path
+  const lectureId = new mongoose.Types.ObjectId();
+
+  // Handle Thumbnail Upload if file attached
+  if (thumbnailFile) {
+    try {
+      const ext = path.extname(thumbnailFile.originalname || thumbnailFile.filename || ".jpg");
+      const thumbS3Key = `thumbnails/lecture-${lectureId}${ext}`;
+      thumbnailUrl = await uploadFileToS3(thumbnailFile.path, thumbS3Key);
+
+      if (fs.existsSync(thumbnailFile.path)) {
+        fs.unlinkSync(thumbnailFile.path);
+      }
+    } catch (thumbErr) {
+      console.error("Error uploading lecture thumbnail to S3:", thumbErr);
+    }
+  }
+
+  // Handle Video Processing and Upload
+  if (videoFile) {
+    const durationSec = Number(chunkDuration) || 10;
+    const processResult = await processUploadedVideo(videoFile.path, durationSec);
+    
+    // Upload directory to S3
+    const s3Prefix = `videos/subject-${targetChapter.subject}/chapter-${chapterId}/lecture-${lectureId}`;
+    const s3Urls = await uploadDirectoryToS3(processResult.outputDir, s3Prefix);
+
+    // Find the master playlist URL
+    const masterUrl = s3Urls.find(url => url.endsWith('master.m3u8'));
+    
+    if (!masterUrl) {
+      throw new Error("Failed to generate or upload master playlist.");
+    }
+
+    videoUrl = masterUrl;
+    duration = processResult.duration || 0;
+
+    // Clean up local files
+    try {
+      if (fs.existsSync(processResult.outputDir)) {
+        fs.rmSync(processResult.outputDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+      }
+      if (fs.existsSync(videoFile.path)) {
+        fs.unlinkSync(videoFile.path);
+      }
+    } catch (cleanupErr) {
+      console.error("Error cleaning up local files:", cleanupErr);
+    }
   }
 
   if (!videoUrl) {
@@ -43,13 +139,15 @@ export const createLectureService = async (data, file) => {
   }
 
   const lecture = await Lecture.create({
+    _id: lectureId,
     title,
     description: description || "",
+    thumbnailUrl,
     videoUrl,
-    videoPublicId,
     duration,
     chapter: chapterId,
     subject: targetChapter.subject,
+    classes: classesId,
     isPreview: isPreview === "true" || isPreview === true,
     sortOrder: sortOrder || 0,
   });
@@ -60,8 +158,19 @@ export const createLectureService = async (data, file) => {
 // ==========================================
 // UPDATE LECTURE Service
 // ==========================================
-export const updateLectureService = async (id, data, file) => {
-  const { title, description, chapter: chapterId, isPreview, sortOrder, isActive, videoUrl: directVideoUrl } = data || {};
+export const updateLectureService = async (id, data, files) => {
+  const {
+    title,
+    description,
+    chapter: chapterId,
+    classes: inputClassesId,
+    thumbnailUrl: directThumbnailUrl,
+    videoUrl: directVideoUrl,
+    isPreview,
+    sortOrder,
+    isActive,
+    chunkDuration,
+  } = data || {};
 
   const lecture = await Lecture.findById(id);
   if (!lecture) {
@@ -70,15 +179,52 @@ export const updateLectureService = async (id, data, file) => {
     throw error;
   }
 
-  if (chapterId && chapterId.toString() !== lecture.chapter.toString()) {
-    const targetChapter = await Chapter.findById(chapterId);
-    if (!targetChapter) {
-      const error = new Error("New referenced chapter not found.");
+  let videoFile = null;
+  let thumbnailFile = null;
+
+  if (files) {
+    if (files.video) {
+      videoFile = Array.isArray(files.video) ? files.video[0] : files.video;
+    } else if (files.path) {
+      videoFile = files;
+    }
+
+    if (files.thumbnail || files.thumbnailUrl) {
+      const thumb = files.thumbnail || files.thumbnailUrl;
+      thumbnailFile = Array.isArray(thumb) ? thumb[0] : thumb;
+    }
+  }
+
+  const activeChapterId = chapterId || lecture.chapter;
+  if (activeChapterId) {
+    const isChapterChanged = !lecture.chapter || activeChapterId.toString() !== lecture.chapter.toString();
+    const isMissingSubjectOrClasses = !lecture.subject || !lecture.classes;
+
+    if (isChapterChanged || isMissingSubjectOrClasses) {
+      const targetChapter = await Chapter.findById(activeChapterId);
+      if (!targetChapter) {
+        const error = new Error("Referenced chapter not found.");
+        error.statusCode = 404;
+        throw error;
+      }
+      const targetSubject = await Subject.findById(targetChapter.subject);
+      
+      lecture.chapter = activeChapterId;
+      lecture.subject = targetChapter.subject;
+      if (targetSubject && targetSubject.classes) {
+        lecture.classes = targetSubject.classes;
+      }
+    }
+  }
+
+  if (inputClassesId) {
+    const targetClass = await Classes.findById(inputClassesId);
+    if (!targetClass) {
+      const error = new Error("Referenced class not found.");
       error.statusCode = 404;
       throw error;
     }
-    lecture.chapter = chapterId;
-    lecture.subject = targetChapter.subject;
+    lecture.classes = inputClassesId;
   }
 
   if (title !== undefined) lecture.title = title;
@@ -87,25 +233,31 @@ export const updateLectureService = async (id, data, file) => {
   if (sortOrder !== undefined) lecture.sortOrder = sortOrder;
   if (isActive !== undefined) lecture.isActive = isActive;
 
-  if (directVideoUrl) {
-    // If direct URL is provided, replace old Cloudinary resource
-    if (lecture.videoPublicId) {
-      await deleteFromCloudinary(lecture.videoPublicId, "video");
-      lecture.videoPublicId = "";
-    }
-    lecture.videoUrl = directVideoUrl;
-    lecture.duration = 0;
+  if (directThumbnailUrl !== undefined) {
+    lecture.thumbnailUrl = directThumbnailUrl;
   }
 
-  if (file) {
-    // Upload new video file to Cloudinary
-    if (lecture.videoPublicId) {
-      await deleteFromCloudinary(lecture.videoPublicId, "video");
+  if (thumbnailFile) {
+    try {
+      const ext = path.extname(thumbnailFile.originalname || thumbnailFile.filename || ".jpg");
+      const thumbS3Key = `thumbnails/lecture-${lecture._id}${ext}`;
+      lecture.thumbnailUrl = await uploadFileToS3(thumbnailFile.path, thumbS3Key);
+
+      if (fs.existsSync(thumbnailFile.path)) {
+        fs.unlinkSync(thumbnailFile.path);
+      }
+    } catch (thumbErr) {
+      console.error("Error uploading lecture thumbnail to S3:", thumbErr);
     }
-    const uploadResult = await uploadToCloudinary(file.buffer, "lectures", "video");
-    lecture.videoUrl = uploadResult.url;
-    lecture.videoPublicId = uploadResult.publicId;
-    lecture.duration = uploadResult.duration || 0;
+  }
+
+  // Delete temporary video file if uploaded (since video updates are not allowed via this endpoint)
+  if (videoFile && fs.existsSync(videoFile.path)) {
+    try {
+      fs.unlinkSync(videoFile.path);
+    } catch (cleanupErr) {
+      console.error("Error cleaning up uploaded video file in updateLectureService:", cleanupErr);
+    }
   }
 
   await lecture.save();
@@ -121,11 +273,6 @@ export const deleteLectureService = async (id) => {
     const error = new Error("Lecture not found.");
     error.statusCode = 404;
     throw error;
-  }
-
-  // Delete video from Cloudinary if exists
-  if (lecture.videoPublicId) {
-    await deleteFromCloudinary(lecture.videoPublicId, "video");
   }
 
   await Lecture.findByIdAndDelete(id);
@@ -195,3 +342,35 @@ export const getLecturesService = async (chapterId, studentId) => {
     processedLectures,
   };
 };
+
+// ==========================================
+// GET LECTURES BY CHAPTER FOR ADMIN Service
+// ==========================================
+export const getLecturesForAdminService = async (chapterId) => {
+  if (!chapterId) {
+    const error = new Error("Chapter query parameter is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const chapterObj = await Chapter.findById(chapterId);
+  if (!chapterObj) {
+    const error = new Error("Chapter not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Fetch all lectures (active/inactive) for this chapter for admin visibility
+  const lectures = await Lecture.find({ chapter: chapterId })
+    .sort({ sortOrder: 1, createdAt: 1 });
+
+  // For admin, do not hide videoUrl or lock the lecture
+  const processedLectures = lectures.map((lecture) => {
+    const lectureJSON = lecture.toJSON();
+    lectureJSON.isLocked = false;
+    return lectureJSON;
+  });
+
+  return processedLectures;
+};
+
